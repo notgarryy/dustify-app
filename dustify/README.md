@@ -9,27 +9,27 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - Persistent Storage: Saves connected device details using SharedPreferences.
 
 ## Dependencies
-flutter_blue_plus: "1.35.3"<br>
-firebase_core: "3.12.1"<br>
-firebase_auth: "5.5.1"<br>
-firebase_analytics: "11.4.4"<br>
-cloud_firestore: "5.6.5"<br>
-get_it: "8.0.3"<br>
-shared_preferences: "2.5.3"<br>
-fl_chart: "0.70.2"
+- flutter_blue_plus: "1.35.3"<br>
+- firebase_core: "3.12.1"<br>
+- firebase_auth: "5.5.1"<br>
+- firebase_analytics: "11.4.4"<br>
+- cloud_firestore: "5.6.5"<br>
+- get_it: "8.0.3"<br>
+- shared_preferences: "2.5.3"<br>
+- fl_chart: "0.70.2"
 
 ## Update History:
 v0.0.1 : <br>
-    - BLE scanner<br>
-    - BLE connection to ESP32<br>
-    - Read data from ESP32<br>
+- BLE scanner<br>
+- BLE connection to ESP32<br>
+- Read data from ESP32<br>
 v0.0.2 : <br>
-    - User interface<br>
+- User interface<br>
 v0.0.3 :<br>
-    - Fixed crashing issues<br>
-    - Fixed BLE connection issues<br>
-    - Added BLE manager, now the data is available on the home page<br>
-    - Added a placeholder AQI meter
+- Fixed crashing issues<br>
+- Fixed BLE connection issues<br>
+- Added BLE manager, now the data is available on the home page<br>
+- Added a placeholder AQI meter
 
 ## TODO:
 - Graph BLE Data
