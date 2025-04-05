@@ -1,4 +1,4 @@
-import 'package:dustify/pages/home_page.dart';
+import 'package:dustify/services/ble_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'dart:typed_data';
@@ -14,6 +14,7 @@ class FindDevices extends StatefulWidget {
 class _FindDevicesState extends State<FindDevices> {
   List<ScanResult> scanResultList = [];
   bool isScanning = false;
+  bool isLoading = false;
   BluetoothDevice? connectedDevice;
   List<BluetoothService> services = [];
   String receivedData = "No data";
@@ -56,39 +57,52 @@ class _FindDevicesState extends State<FindDevices> {
         ),
       ),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Expanded(
-              child: ListView.separated(
-                itemCount: scanResultList.length,
-                itemBuilder: (context, index) {
-                  return listItem(scanResultList[index]);
-                },
-                separatorBuilder: (BuildContext context, int index) {
-                  return const Divider();
-                },
-              ),
-            ),
-            Container(
-              margin: EdgeInsets.symmetric(vertical: _devHeight * 0.03),
-              width: _devWidth * 0.8,
-              child: MaterialButton(
-                onPressed: toggleState,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30), // Rounded corners
+            Column(
+              children: [
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: scanResultList.length,
+                    itemBuilder: (context, index) {
+                      return listItem(scanResultList[index]);
+                    },
+                    separatorBuilder: (BuildContext context, int index) {
+                      return const Divider();
+                    },
+                  ),
                 ),
-                height: _devHeight * 0.05,
-                color: Color.fromRGBO(255, 116, 46, 1),
-                child: Text(
-                  isScanning ? "Stop Scan" : "Find Device",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
+                Container(
+                  margin: EdgeInsets.symmetric(vertical: _devHeight * 0.07),
+                  width: _devWidth * 0.8,
+                  child: MaterialButton(
+                    onPressed: toggleState,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    height: _devHeight * 0.05,
+                    color: Color.fromRGBO(255, 116, 46, 1),
+                    child: Text(
+                      isScanning ? "Stop Scan" : "Find Device",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (isLoading)
+              Container(
+                color: Colors.black54,
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -98,43 +112,68 @@ class _FindDevicesState extends State<FindDevices> {
   void toggleState() async {
     if (connectedDevice != null) {
       await connectedDevice!.disconnect();
+      await Future.delayed(Duration(seconds: 1));
       setState(() {
         connectedDevice = null;
         receivedData = "No data";
+      });
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove('connected_device_id');
+      await prefs.remove('connected_device_name');
+      setState(() {
+        connectedDeviceId = null;
       });
     }
 
     isScanning = !isScanning;
     if (isScanning) {
+      setState(() {
+        isLoading = true;
+      });
+
       FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
       scan();
     } else {
       FlutterBluePlus.stopScan();
+      setState(() {
+        isLoading = false;
+      });
     }
+
     setState(() {});
   }
 
   void scan() async {
     if (isScanning) {
-      FlutterBluePlus.scanResults.listen((results) {
+      final startTime = DateTime.now();
+
+      FlutterBluePlus.scanResults.listen((results) async {
+        if (!mounted) return;
+
+        List<ScanResult> filtered =
+            results.where((result) {
+              String name =
+                  result.device.platformName.isNotEmpty
+                      ? result.device.platformName
+                      : (result.advertisementData.advName.isNotEmpty
+                          ? result.advertisementData.advName
+                          : 'N/A');
+              return name != 'N/A';
+            }).toList();
+
+        final durationElapsed = DateTime.now().difference(startTime);
+        final delay = Duration(seconds: 1) - durationElapsed;
+
+        // Ensure the loading indicator stays visible for at least 1 second
+        if (delay.inMilliseconds > 0) {
+          await Future.delayed(delay);
+        }
+
+        if (!mounted) return;
         setState(() {
-          scanResultList =
-              results.where((result) {
-                String deviceId = result.device.remoteId.toString();
-                String name =
-                    result.device.platformName.isNotEmpty
-                        ? result.device.platformName
-                        : (result.advertisementData.advName.isNotEmpty
-                            ? result.advertisementData.advName
-                            : 'N/A');
-
-                bool isConnectedDevice =
-                    connectedDeviceId != null &&
-                    connectedDeviceId!.isNotEmpty &&
-                    deviceId == connectedDeviceId;
-
-                return name != 'N/A' && !isConnectedDevice;
-              }).toList();
+          scanResultList = filtered;
+          isLoading = false;
         });
       });
     }
@@ -142,6 +181,8 @@ class _FindDevicesState extends State<FindDevices> {
 
   Future<void> onTap(ScanResult r) async {
     try {
+      await BLEManager().connectToDevice(r.device);
+      await saveConnectedDevice(r.device);
       await r.device.connect(timeout: const Duration(seconds: 10));
       FlutterBluePlus.stopScan();
 
@@ -163,6 +204,7 @@ class _FindDevicesState extends State<FindDevices> {
           if (characteristic.properties.notify) {
             characteristic.setNotifyValue(true);
             characteristic.lastValueStream.listen((value) {
+              if (!mounted) return;
               setState(() {
                 if (value.isNotEmpty) {
                   // Convert bytes to hex string for debugging
@@ -273,20 +315,32 @@ class _FindDevicesState extends State<FindDevices> {
   }
 
   void monitorDisconnection() {
-    connectedDevice?.connectionState.listen((BluetoothConnectionState state) {
+    connectedDevice?.connectionState.listen((
+      BluetoothConnectionState state,
+    ) async {
       if (state == BluetoothConnectionState.disconnected) {
-        if (mounted) {
-          // Prevent updating UI after widget is disposed
-          setState(() {
-            connectedDevice = null;
-            receivedData = "No data";
-          });
+        if (!mounted) return;
 
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Device Disconnected")));
-        }
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.remove('connected_device_id');
+        await prefs.remove('connected_device_name');
+
+        setState(() {
+          connectedDevice = null;
+          connectedDeviceId = null;
+          receivedData = "No data";
+        });
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Device Disconnected")));
       }
     });
+  }
+
+  @override
+  void dispose() {
+    FlutterBluePlus.stopScan(); // 🧹 Important cleanup
+    super.dispose();
   }
 }
