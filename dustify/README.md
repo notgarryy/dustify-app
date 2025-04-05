@@ -19,16 +19,16 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - fl_chart: "0.70.2"
 
 ## Update History:
-v0.0.1 : <br>
-- BLE scanner<br>
-- BLE connection to ESP32<br>
-- Read data from ESP32<br>
-v0.0.2 : <br>
-- User interface<br>
-v0.0.3 :<br>
-- Fixed crashing issues<br>
-- Fixed BLE connection issues<br>
-- Added BLE manager, now the data is available on the home page<br>
+v0.0.1 : 
+- BLE scanner
+- BLE connection to ESP32
+- Read data from ESP32
+v0.0.2 : 
+- User interface
+v0.0.3 :
+- Fixed crashing issues
+- Fixed BLE connection issues
+- Added BLE manager, now the data is available on the home page
 - Added a placeholder AQI meter
 
 ## TODO:
