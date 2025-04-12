@@ -16,20 +16,19 @@ class _HomePageState extends State<HomePage> {
   int _currentPage = 0;
   String? connectedDeviceName;
   String? connectedDeviceId;
-  int? deviceData;
-  BluetoothDevice? connectedDevice;
-  BluetoothCharacteristic? notifyCharacteristic;
-  StreamSubscription<int>? _dataSubscription;
+  Map<String, double>? deviceData; // Store both PM2.5 and PM10
+  StreamSubscription<Map<String, double>>? _dataSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadConnectedDevice();
 
-    _dataSubscription = BLEManager().dataStream.listen((value) {
-      if (mounted && value != -1) {
+    // Listen to the parsed data stream from BLEManager
+    _dataSubscription = BLEManager().parsedDataStream.listen((data) {
+      if (mounted) {
         setState(() {
-          deviceData = value;
+          deviceData = data;
         });
       }
     });
@@ -124,11 +123,24 @@ class _HomePageState extends State<HomePage> {
         children: [
           Row(
             children: [
-              Icon(Icons.bluetooth, color: Colors.cyan),
-              SizedBox(width: 10),
-              Text(
-                connectedDeviceName!,
-                style: TextStyle(color: Colors.white, fontSize: 18),
+              Icon(Icons.bluetooth, color: Colors.cyan, size: 30),
+              SizedBox(width: 15),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    connectedDeviceName!,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    "Device ID: ${connectedDeviceId!.isNotEmpty ? connectedDeviceId! : "No ID available"}",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
               ),
               Spacer(),
               IconButton(
@@ -138,21 +150,37 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           SizedBox(height: 10),
-          Text(
-            "Device ID: ${connectedDeviceId!.isNotEmpty ? connectedDeviceId! : "No ID available"}",
-            style: TextStyle(color: Colors.grey),
-          ),
-          SizedBox(height: 10),
           deviceData != null
               ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Live Data: ${deviceData} µg/m³",
+                    "PM10  : ${deviceData!['PM10']} µg/m³ - ${_getAQILevel(deviceData!['PM10'], false)}",
+                    style: TextStyle(color: Colors.orangeAccent, fontSize: 16),
+                  ),
+                  Text(
+                    "PM2.5 : ${deviceData!['PM2.5']} µg/m³ - ${_getAQILevel(deviceData!['PM2.5'], true)}",
                     style: TextStyle(color: Colors.orangeAccent, fontSize: 16),
                   ),
                   SizedBox(height: 12),
-                  AQIMeter(value: deviceData!),
+                  Text(
+                    "PM10  : ",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w400,
+                      fontSize: 20,
+                    ),
+                  ),
+                  AQIMeter(value: deviceData!['PM10']!, isPM2_5: false),
+                  Text(
+                    "PM2.5 : ",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w400,
+                      fontSize: 20,
+                    ),
+                  ),
+                  AQIMeter(value: deviceData!['PM2.5']!, isPM2_5: true),
                 ],
               )
               : Text(
@@ -162,6 +190,23 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+
+  String _getAQILevel(double? value, bool isPM2_5) {
+    if (isPM2_5) {
+      if (value! <= 15.5) return "Very Good";
+      if (value <= 55.4) return "Good";
+      if (value <= 150.4) return "Fair";
+      if (value <= 250.4) return "Poor";
+      return "Hazardous";
+    } else {
+      // PM10
+      if (value! <= 50) return "Very Good";
+      if (value <= 150) return "Good";
+      if (value <= 350) return "Fair";
+      if (value <= 420) return "Poor";
+      return "Hazardous";
+    }
   }
 
   Future<void> _clearConnectedDevice() async {

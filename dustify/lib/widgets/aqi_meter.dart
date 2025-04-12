@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AQIMeter extends StatefulWidget {
-  final int value; // µg/m³
+  final double value; // µg/m³
+  final bool isPM2_5; // Flag to determine whether it's PM2.5 or PM10
 
-  const AQIMeter({super.key, required this.value});
+  const AQIMeter({super.key, required this.value, required this.isPM2_5});
 
   @override
   State<AQIMeter> createState() => _AQIMeterState();
@@ -21,7 +22,6 @@ class _AQIMeterState extends State<AQIMeter>
     Colors.green,
     Colors.yellow,
     Colors.orange,
-    Colors.brown,
     Colors.red,
   ];
 
@@ -30,7 +30,6 @@ class _AQIMeterState extends State<AQIMeter>
     "Good",
     "Fair",
     "Poor",
-    "Very Poor",
     "Hazardous",
   ];
 
@@ -66,22 +65,21 @@ class _AQIMeterState extends State<AQIMeter>
     super.dispose();
   }
 
-  double _calculatePosition(int value) {
-    if (value <= 12) return 0 / 6;
-    if (value <= 35) return 1 / 6;
-    if (value <= 55) return 2 / 6;
-    if (value <= 150) return 3 / 6;
-    if (value <= 250) return 4 / 6;
-    return 5 / 6;
-  }
-
-  int _getAQIIndex(int value) {
-    if (value <= 12) return 0;
-    if (value <= 35) return 1;
-    if (value <= 55) return 2;
-    if (value <= 150) return 3;
-    if (value <= 250) return 4;
-    return 5;
+  double _calculatePosition(double value) {
+    if (widget.isPM2_5) {
+      if (value <= 15.5) return 0;
+      if (value <= 55.4) return 1;
+      if (value <= 150.4) return 2;
+      if (value <= 250.4) return 3;
+      return 4;
+    } else {
+      // PM10
+      if (value <= 50) return 0;
+      if (value <= 150) return 1;
+      if (value <= 350) return 2;
+      if (value <= 420) return 3;
+      return 4;
+    }
   }
 
   @override
@@ -91,38 +89,48 @@ class _AQIMeterState extends State<AQIMeter>
         LayoutBuilder(
           builder: (context, constraints) {
             final totalWidth = constraints.maxWidth;
-            final sectionWidth = totalWidth / 6;
+            final sectionWidth = totalWidth / 5; // 5 sections instead of 6
 
-            return Stack(
-              children: [
-                Row(
-                  children:
-                      _colors
-                          .map(
-                            (color) => Expanded(
-                              child: Container(height: 20, color: color),
-                            ),
-                          )
-                          .toList(),
+            return Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Color.fromRGBO(208, 208, 208, 1), // Gray border
+                  width: 2, // Border width
                 ),
-                AnimatedBuilder(
-                  animation: _animation,
-                  builder: (context, child) {
-                    return Positioned(
-                      left: _animation.value * totalWidth,
-                      top: 0,
-                      child: Container(
-                        width: 4,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(4), // Rounded corners
+              ),
+              child: Stack(
+                children: [
+                  Row(
+                    children:
+                        _colors
+                            .map(
+                              (color) => Expanded(
+                                child: Container(height: 20, color: color),
+                              ),
+                            )
+                            .toList(),
+                  ),
+                  AnimatedBuilder(
+                    animation: _animation,
+                    builder: (context, child) {
+                      return Positioned(
+                        left:
+                            _animation.value * sectionWidth, // Map to sections
+                        top: 0,
+                        child: Container(
+                          width: 6, // Thinner bar
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                      );
+                    },
+                  ),
+                ],
+              ),
             );
           },
         ),

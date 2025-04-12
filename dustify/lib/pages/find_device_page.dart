@@ -1,7 +1,7 @@
 import 'package:dustify/services/ble_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'dart:typed_data';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FindDevices extends StatefulWidget {
@@ -17,7 +17,8 @@ class _FindDevicesState extends State<FindDevices> {
   bool isLoading = false;
   BluetoothDevice? connectedDevice;
   List<BluetoothService> services = [];
-  String receivedData = "No data";
+  Map<String, double> parsedData =
+      {}; // For storing parsed PM2.5 and PM10 values
   String? connectedDeviceId;
 
   @override
@@ -115,7 +116,7 @@ class _FindDevicesState extends State<FindDevices> {
       await Future.delayed(Duration(seconds: 1));
       setState(() {
         connectedDevice = null;
-        receivedData = "No data";
+        parsedData = {}; // Reset parsed data
       });
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -165,7 +166,6 @@ class _FindDevicesState extends State<FindDevices> {
         final durationElapsed = DateTime.now().difference(startTime);
         final delay = Duration(seconds: 1) - durationElapsed;
 
-        // Ensure the loading indicator stays visible for at least 1 second
         if (delay.inMilliseconds > 0) {
           await Future.delayed(delay);
         }
@@ -191,39 +191,12 @@ class _FindDevicesState extends State<FindDevices> {
         connectedDevice = r.device;
       });
 
-      monitorDisconnection();
-
       List<BluetoothService> discoveredServices =
           await r.device.discoverServices();
       setState(() {
         services = discoveredServices;
       });
 
-      for (var service in services) {
-        for (var characteristic in service.characteristics) {
-          if (characteristic.properties.notify) {
-            characteristic.setNotifyValue(true);
-            characteristic.lastValueStream.listen((value) {
-              if (!mounted) return;
-              setState(() {
-                if (value.isNotEmpty) {
-                  // Convert bytes to hex string for debugging
-                  String hexData = value
-                      .map((e) => e.toRadixString(16).padLeft(2, '0'))
-                      .join(' ');
-
-                  // Convert hex bytes to integer (assume Little-Endian)
-                  int intValue = bytesToInt(value, endian: Endian.little);
-
-                  receivedData = "$hexData → Counter: $intValue";
-                } else {
-                  receivedData = "No data";
-                }
-              });
-            });
-          }
-        }
-      }
       await saveConnectedDevice(r.device);
 
       if (mounted) {
@@ -242,14 +215,10 @@ class _FindDevicesState extends State<FindDevices> {
     await prefs.setString('connected_device_name', device.platformName);
   }
 
-  void disconnect() async {
-    if (connectedDevice != null) {
-      await connectedDevice!.disconnect();
-      setState(() {
-        connectedDevice = null;
-        receivedData = "No data";
-      });
-    }
+  @override
+  void dispose() {
+    FlutterBluePlus.stopScan(); // 🧹 Important cleanup
+    super.dispose();
   }
 
   Widget listItem(ScanResult r) {
@@ -295,52 +264,5 @@ class _FindDevicesState extends State<FindDevices> {
               : Colors.cyan,
       child: const Icon(Icons.bluetooth, color: Colors.white),
     );
-  }
-
-  int bytesToInt(List<int> bytes, {Endian endian = Endian.little}) {
-    ByteData byteData = ByteData.sublistView(Uint8List.fromList(bytes));
-
-    if (bytes.length == 1) {
-      return byteData.getUint8(0);
-    } else if (bytes.length == 2) {
-      return byteData.getUint16(0, endian);
-    } else if (bytes.length == 4) {
-      return byteData.getUint32(0, endian);
-    } else {
-      return bytes.fold(
-        0,
-        (prev, elem) => (prev << 8) + elem,
-      ); // Fallback for unknown lengths
-    }
-  }
-
-  void monitorDisconnection() {
-    connectedDevice?.connectionState.listen((
-      BluetoothConnectionState state,
-    ) async {
-      if (state == BluetoothConnectionState.disconnected) {
-        if (!mounted) return;
-
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.remove('connected_device_id');
-        await prefs.remove('connected_device_name');
-
-        setState(() {
-          connectedDevice = null;
-          connectedDeviceId = null;
-          receivedData = "No data";
-        });
-
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Device Disconnected")));
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    FlutterBluePlus.stopScan(); // 🧹 Important cleanup
-    super.dispose();
   }
 }

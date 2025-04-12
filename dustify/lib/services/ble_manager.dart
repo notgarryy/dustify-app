@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -16,6 +16,12 @@ class BLEManager {
       StreamController<int>.broadcast();
   Stream<int> get dataStream => _dataController.stream;
 
+  // To store the parsed PM2.5 and PM10 values
+  final StreamController<Map<String, double>> _parsedDataController =
+      StreamController<Map<String, double>>.broadcast();
+  Stream<Map<String, double>> get parsedDataStream =>
+      _parsedDataController.stream;
+
   Future<void> connectToDevice(BluetoothDevice device) async {
     await device.connect(timeout: Duration(seconds: 10));
     connectedDevice = device;
@@ -29,8 +35,10 @@ class BLEManager {
 
           characteristic.lastValueStream.listen((value) {
             if (value.isNotEmpty) {
-              int data = _bytesToInt(value, endian: Endian.little);
-              _dataController.add(data);
+              String data = utf8.decode(
+                value,
+              ); // Decode the bytes into a string
+              _parseSensorData(data); // Parse and handle the sensor data
             }
           });
           break;
@@ -60,13 +68,21 @@ class BLEManager {
     }
   }
 
-  int _bytesToInt(List<int> bytes, {Endian endian = Endian.little}) {
-    ByteData byteData = ByteData.sublistView(Uint8List.fromList(bytes));
+  // Function to parse sensor data string (PM2.5#PM10)
+  void _parseSensorData(String rawData) {
+    try {
+      List<String> parts = rawData.split('#'); // Split based on '#'
+      if (parts.length == 2) {
+        double pm25 = double.parse(parts[0]); // Parse PM2.5
+        double pm10 = double.parse(parts[1]); // Parse PM10
 
-    if (bytes.length == 1) return byteData.getUint8(0);
-    if (bytes.length == 2) return byteData.getUint16(0, endian);
-    if (bytes.length == 4) return byteData.getUint32(0, endian);
-
-    return bytes.fold(0, (prev, elem) => (prev << 8) + elem);
+        // Add the parsed data to the controller
+        _parsedDataController.add({'PM2.5': pm25, 'PM10': pm10});
+      } else {
+        debugPrint("Invalid data format: $rawData");
+      }
+    } catch (e) {
+      debugPrint("Failed to parse sensor data: $e");
+    }
   }
 }
