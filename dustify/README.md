@@ -33,10 +33,14 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - Added BLE manager — now the data is available on the home page
 - Added a placeholder AQI meter
 
-### v0.0.4 - April 13th, 2025 
+### v0.0.4 - April 12th, 2025 
 - Updated the code to receive string data from the ESP32 device, instead of integer data
 - Implemented a parsing feature, to parse the string data into PM2.5 and PM10 data
 - Updated the AQI meter threshold parameter
+
+### v0.0.5 - April 13th, 2025
+- Firebase integrated
+- Bottom navigation can navigate between the main page and the profile page
 
 ## TODO:
 - Graph BLE Data

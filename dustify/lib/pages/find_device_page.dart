@@ -1,7 +1,6 @@
 import 'package:dustify/services/ble_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FindDevices extends StatefulWidget {
