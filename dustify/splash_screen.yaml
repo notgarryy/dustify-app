@@ -1,0 +1,10 @@
+flutter_native_splash:
+  android: true
+  ios: true
+  web: false
+
+  color: "#221f1f"
+  image: assets/images/dustify_logo.png
+  branding: assets/images/dustify_branding.png
+
+  # TODO: Add android 12 capability 

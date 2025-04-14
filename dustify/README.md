@@ -42,6 +42,11 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - Firebase integrated
 - Bottom navigation can navigate between the main page and the profile page
 
+### v0.0.6 - April 14th, 2025
+- Added splash screen
+- Updated app icon
+- Updated app name
+
 ## TODO:
 - Graph BLE Data
 - Integrate with Firebase
