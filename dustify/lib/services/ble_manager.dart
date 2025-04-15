@@ -38,6 +38,7 @@ class BLEManager {
               String data = utf8.decode(
                 value,
               ); // Decode the bytes into a string
+              debugPrint("Decoded BLE data: $data");
               _parseSensorData(data); // Parse and handle the sensor data
             }
           });

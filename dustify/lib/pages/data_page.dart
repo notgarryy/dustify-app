@@ -1,4 +1,5 @@
 import 'package:dustify/widgets/aqi_meter.dart';
+import 'package:dustify/widgets/graph.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dustify/services/ble_manager.dart';
@@ -22,15 +23,11 @@ class _DataPageState extends State<DataPage> {
     super.initState();
     _loadConnectedDevice();
 
-    // Delay setState safely after build cycle
     _dataSubscription = BLEManager().parsedDataStream.listen((data) {
       if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {
-              deviceData = data;
-            });
-          }
+        debugPrint("New parsed data received: $data");
+        setState(() {
+          deviceData = data;
         });
       }
     });
@@ -153,25 +150,43 @@ class _DataPageState extends State<DataPage> {
                     "PM2.5 : ${deviceData!['PM2.5']} µg/m³ - ${_getAQILevel(deviceData!['PM2.5'], true)}",
                     style: TextStyle(color: Colors.orangeAccent, fontSize: 16),
                   ),
-                  SizedBox(height: 12),
-                  Text(
-                    "PM10  : ",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w400,
-                      fontSize: 20,
+                  SizedBox(height: 20),
+                  Center(
+                    child: Text(
+                      "PM10",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                      ),
                     ),
                   ),
                   AQIMeter(value: deviceData!['PM10']!, isPM2_5: false),
-                  Text(
-                    "PM2.5 : ",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w400,
-                      fontSize: 20,
+                  SizedBox(height: 20),
+                  Center(
+                    child: Text(
+                      "PM2.5",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                      ),
                     ),
                   ),
                   AQIMeter(value: deviceData!['PM2.5']!, isPM2_5: true),
+                  SizedBox(height: 40),
+                  Center(
+                    child: Text(
+                      "Live Graph",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  LineGraph(),
                 ],
               )
               : Text(
