@@ -23,6 +23,15 @@ class _DataPageState extends State<DataPage> {
     super.initState();
     _loadConnectedDevice();
 
+    BLEManager().tryReconnectFromPreferences();
+
+    final cached = BLEManager().lastKnownData;
+    if (cached != null) {
+      setState(() {
+        deviceData = cached;
+      });
+    }
+
     _dataSubscription = BLEManager().parsedDataStream.listen((data) {
       if (mounted) {
         debugPrint("New parsed data received: $data");
@@ -99,101 +108,110 @@ class _DataPageState extends State<DataPage> {
   }
 
   Widget _connectedDeviceView() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.bluetooth, color: Colors.cyan, size: 30),
-              SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    connectedDeviceName!,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(
-                    "Device ID: ${connectedDeviceId!.isNotEmpty ? connectedDeviceId! : "No ID available"}",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-              Spacer(),
-              IconButton(
-                icon: Icon(Icons.delete_forever_rounded, color: Colors.red),
-                onPressed: _clearConnectedDevice,
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          deviceData != null
-              ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "PM10  : ${deviceData!['PM10']} µg/m³ - ${_getAQILevel(deviceData!['PM10'], false)}",
-                    style: TextStyle(color: Colors.orangeAccent, fontSize: 16),
-                  ),
-                  Text(
-                    "PM2.5 : ${deviceData!['PM2.5']} µg/m³ - ${_getAQILevel(deviceData!['PM2.5'], true)}",
-                    style: TextStyle(color: Colors.orangeAccent, fontSize: 16),
-                  ),
-                  SizedBox(height: 20),
-                  Center(
-                    child: Text(
-                      "PM10",
+    return SingleChildScrollView(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.black26,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.bluetooth, color: Colors.cyan, size: 30),
+                SizedBox(width: 15),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      connectedDeviceName!,
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ),
-                  AQIMeter(value: deviceData!['PM10']!, isPM2_5: false),
-                  SizedBox(height: 20),
-                  Center(
-                    child: Text(
-                      "PM2.5",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20,
+                    Text(
+                      "Device ID: ${connectedDeviceId!.isNotEmpty ? connectedDeviceId! : "No ID available"}",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+                Spacer(),
+                IconButton(
+                  icon: Icon(Icons.delete_forever_rounded, color: Colors.red),
+                  onPressed: _clearConnectedDevice,
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            deviceData != null
+                ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 10),
+                    Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            "PM10: ${deviceData!['PM10']} µg/m³",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                            ),
+                          ),
+                          SizedBox(height: 5),
+                          Text(
+                            "${_getAQILevel(deviceData!['PM10'], false)}",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  AQIMeter(value: deviceData!['PM2.5']!, isPM2_5: true),
-                  SizedBox(height: 40),
-                  Center(
-                    child: Text(
-                      "Live Graph",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20,
+                    AQIMeter(value: deviceData!['PM10']!, isPM2_5: false),
+                    LineGraph(isPM2_5: false),
+                    SizedBox(height: 30),
+                    Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            "PM2.5 : ${deviceData!['PM2.5']} µg/m³",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                            ),
+                          ),
+                          SizedBox(height: 5),
+                          Text(
+                            "${_getAQILevel(deviceData!['PM2.5'], true)}",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  LineGraph(),
-                ],
-              )
-              : Text(
-                "Live Data: Waiting...",
-                style: TextStyle(color: Colors.orangeAccent, fontSize: 16),
-              ),
-        ],
+                    AQIMeter(value: deviceData!['PM2.5']!, isPM2_5: true),
+                    LineGraph(isPM2_5: true),
+                  ],
+                )
+                : Text(
+                  "Live Data: Waiting...",
+                  style: TextStyle(color: Colors.orangeAccent, fontSize: 16),
+                ),
+          ],
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BLEManager {
   // Singleton pattern
@@ -16,44 +17,85 @@ class BLEManager {
       StreamController<int>.broadcast();
   Stream<int> get dataStream => _dataController.stream;
 
-  // To store the parsed PM2.5 and PM10 values
   final StreamController<Map<String, double>> _parsedDataController =
       StreamController<Map<String, double>>.broadcast();
   Stream<Map<String, double>> get parsedDataStream =>
       _parsedDataController.stream;
 
+  // Last known data
+  Map<String, double>? _lastKnownData;
+  Map<String, double>? get lastKnownData => _lastKnownData;
+
+  // Reconnect guard
+  bool _isConnectingOrConnected = false;
+
+  // Recent values (max 60 entries each)
+  List<double> last60PM25 = [];
+  List<double> last60PM10 = [];
+
   Future<void> connectToDevice(BluetoothDevice device) async {
-    await device.connect(timeout: Duration(seconds: 10));
-    connectedDevice = device;
-
-    final services = await device.discoverServices();
-    for (var service in services) {
-      for (var characteristic in service.characteristics) {
-        if (characteristic.properties.notify) {
-          notifyCharacteristic = characteristic;
-          await characteristic.setNotifyValue(true);
-
-          characteristic.lastValueStream.listen((value) {
-            if (value.isNotEmpty) {
-              String data = utf8.decode(
-                value,
-              ); // Decode the bytes into a string
-              debugPrint("Decoded BLE data: $data");
-              _parseSensorData(data); // Parse and handle the sensor data
-            }
-          });
-          break;
-        }
-      }
+    if (_isConnectingOrConnected) {
+      debugPrint("Already connecting or connected. Skipping...");
+      return;
     }
 
-    // Listen for disconnection
-    device.connectionState.listen((state) {
-      if (state == BluetoothConnectionState.disconnected) {
-        connectedDevice = null;
-        _dataController.add(-1); // or handle it differently
+    _isConnectingOrConnected = true;
+
+    try {
+      // Check if the device is already connected
+      var connectedDevices = await FlutterBluePlus.connectedDevices;
+      if (connectedDevices.isNotEmpty) {
+        for (var d in connectedDevices) {
+          if (d.remoteId == device.remoteId) {
+            debugPrint('Already connected to device: ${device.remoteId}');
+            connectedDevice = d;
+            _isConnectingOrConnected = false;
+            return;
+          }
+        }
       }
-    });
+
+      await device.connect(timeout: Duration(seconds: 10));
+      connectedDevice = device;
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('connected_device_id', device.remoteId.str);
+      await prefs.setString(
+        'connected_device_name',
+        device.platformName ?? "Unknown",
+      );
+
+      final services = await device.discoverServices();
+      for (var service in services) {
+        for (var characteristic in service.characteristics) {
+          if (characteristic.properties.notify) {
+            notifyCharacteristic = characteristic;
+            await characteristic.setNotifyValue(true);
+
+            characteristic.lastValueStream.listen((value) {
+              if (value.isNotEmpty) {
+                String data = utf8.decode(value);
+                debugPrint("Decoded BLE data: $data");
+                _parseSensorData(data);
+              }
+            });
+            break;
+          }
+        }
+      }
+
+      device.connectionState.listen((state) {
+        if (state == BluetoothConnectionState.disconnected) {
+          connectedDevice = null;
+          _isConnectingOrConnected = false;
+          _dataController.add(-1);
+        }
+      });
+    } catch (e) {
+      debugPrint("Connection failed: $e");
+    }
+
+    _isConnectingOrConnected = false;
   }
 
   Future<void> disconnect() async {
@@ -65,25 +107,79 @@ class BLEManager {
       }
       connectedDevice = null;
       notifyCharacteristic = null;
+      _isConnectingOrConnected = false;
       _dataController.add(-1);
     }
   }
 
-  // Function to parse sensor data string (PM2.5#PM10)
-  void _parseSensorData(String rawData) {
+  void _parseSensorData(String rawData) async {
     try {
-      List<String> parts = rawData.split('#'); // Split based on '#'
+      List<String> parts = rawData.split('#');
       if (parts.length == 2) {
-        double pm25 = double.parse(parts[0]); // Parse PM2.5
-        double pm10 = double.parse(parts[1]); // Parse PM10
+        double pm25 = double.parse(parts[0]);
+        double pm10 = double.parse(parts[1]);
 
-        // Add the parsed data to the controller
-        _parsedDataController.add({'PM2.5': pm25, 'PM10': pm10});
+        Map<String, double> data = {'PM2.5': pm25, 'PM10': pm10};
+        _lastKnownData = data;
+        _parsedDataController.add(data);
+
+        // Save to internal list
+        last60PM25.add(pm25);
+        last60PM10.add(pm10);
+
+        if (last60PM25.length > 60) last60PM25.removeAt(0);
+        if (last60PM10.length > 60) last60PM10.removeAt(0);
+
+        // Persist it
+        await saveRecentData();
       } else {
         debugPrint("Invalid data format: $rawData");
       }
     } catch (e) {
       debugPrint("Failed to parse sensor data: $e");
+    }
+  }
+
+  Future<void> saveRecentData() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setStringList(
+      'recent_pm25',
+      last60PM25.map((e) => e.toStringAsFixed(2)).toList(),
+    );
+    prefs.setStringList(
+      'recent_pm10',
+      last60PM10.map((e) => e.toStringAsFixed(2)).toList(),
+    );
+  }
+
+  Future<void> loadRecentData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pm25Str = prefs.getStringList('recent_pm25') ?? [];
+    final pm10Str = prefs.getStringList('recent_pm10') ?? [];
+
+    last60PM25 = pm25Str.map((e) => double.tryParse(e) ?? 0.0).toList();
+    last60PM10 = pm10Str.map((e) => double.tryParse(e) ?? 0.0).toList();
+  }
+
+  Future<void> tryReconnectFromPreferences() async {
+    if (_isConnectingOrConnected || connectedDevice != null) {
+      debugPrint("Skipping reconnect — already in process or connected.");
+      return;
+    }
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? savedId = prefs.getString('connected_device_id');
+
+    if (savedId == null) return;
+
+    List<BluetoothDevice> bondedDevices = await FlutterBluePlus.bondedDevices;
+
+    for (var device in bondedDevices) {
+      if (device.remoteId.str == savedId) {
+        debugPrint("Found bonded device: ${device.remoteId}");
+        await connectToDevice(device);
+        break;
+      }
     }
   }
 }

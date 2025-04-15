@@ -3,6 +3,7 @@ import 'package:dustify/pages/home_page.dart';
 import 'package:dustify/pages/data_page.dart';
 import 'package:dustify/pages/login_page.dart';
 import 'package:dustify/services/firebase_manager.dart';
+import 'package:dustify/services/ble_manager.dart';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,6 +14,10 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      await BLEManager().loadRecentData();
+      await BLEManager().tryReconnectFromPreferences();
+
       await Firebase.initializeApp();
       GetIt.instance.registerSingleton<FirebaseService>(FirebaseService());
 
