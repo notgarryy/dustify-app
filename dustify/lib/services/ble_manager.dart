@@ -60,10 +60,7 @@ class BLEManager {
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('connected_device_id', device.remoteId.str);
-      await prefs.setString(
-        'connected_device_name',
-        device.platformName ?? "Unknown",
-      );
+      await prefs.setString('connected_device_name', device.platformName);
 
       final services = await device.discoverServices();
       for (var service in services) {

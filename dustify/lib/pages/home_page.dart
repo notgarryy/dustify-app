@@ -1,5 +1,5 @@
 import 'package:dustify/pages/data_page.dart';
-import 'package:dustify/pages/login_page.dart';
+import 'package:dustify/pages/profile_page.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
@@ -12,7 +12,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentPage = 0;
 
-  final List<Widget> _pages = [DataPage(), LoginPage()];
+  final List<Widget> _pages = [DataPage(), ProfilePage()];
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,7 @@ class _HomePageState extends State<HomePage> {
           _currentPage = index;
         });
       },
-      selectedItemColor: Colors.white,
+      selectedItemColor: Colors.orange,
       unselectedItemColor: Color.fromRGBO(133, 133, 133, 0.7),
       items: [
         BottomNavigationBarItem(label: "Home", icon: Icon(Icons.home_filled)),

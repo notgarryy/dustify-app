@@ -17,6 +17,8 @@ class FirebaseService {
     await Firebase.initializeApp();
   }
 
+  User? get currentFirebaseUser => _auth.currentUser;
+
   Future<bool> registerUser({
     required String name,
     required String email,

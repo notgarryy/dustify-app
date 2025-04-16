@@ -2,6 +2,8 @@ import 'package:dustify/pages/find_device_page.dart';
 import 'package:dustify/pages/home_page.dart';
 import 'package:dustify/pages/data_page.dart';
 import 'package:dustify/pages/login_page.dart';
+import 'package:dustify/pages/profile_page.dart';
+import 'package:dustify/pages/register_page.dart';
 import 'package:dustify/services/firebase_manager.dart';
 import 'package:dustify/services/ble_manager.dart';
 
@@ -48,7 +50,9 @@ class MyApp extends StatelessWidget {
         'home': (context) => HomePage(),
         'data': (context) => DataPage(),
         'find_device': (context) => FindDevices(),
+        'profile': (context) => ProfilePage(),
         'login': (context) => LoginPage(),
+        'register': (context) => RegisterPage(),
       },
     );
   }

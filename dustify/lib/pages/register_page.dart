@@ -1,25 +1,28 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:dustify/services/firebase_manager.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
-class LoginPage extends StatefulWidget {
+class RegisterPage extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
-    return _LoginPageState();
+    return _RegisterPageState();
   }
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   double? devHeight, devWidth;
 
   FirebaseService? _firebaseService;
 
-  final GlobalKey<FormState> _loginFormKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _registerFormKey = GlobalKey<FormState>();
 
-  String? _email, _password;
+  String? _name, _email, _password;
 
   bool _obscurePassword = true;
 
+  TextEditingController _nameController = TextEditingController();
   TextEditingController _emailController = TextEditingController();
 
   @override
@@ -39,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
         toolbarHeight: devHeight! * 0.08,
         leading: GestureDetector(
           onTap: () {
-            Navigator.popAndPushNamed(context, 'home');
+            Navigator.popAndPushNamed(context, 'login');
           },
           child: Icon(Icons.arrow_back, color: Colors.white),
         ),
@@ -47,19 +50,14 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: Color.fromRGBO(34, 31, 31, 1),
       body: SafeArea(
         child: Container(
-          height: devHeight! * 0.5,
           padding: EdgeInsets.symmetric(horizontal: devWidth! * 0.05),
+          height: devHeight! * 0.6,
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               mainAxisSize: MainAxisSize.max,
               crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _logo(),
-                _loginForm(),
-                _loginButton(),
-                _registerPageLink(),
-              ],
+              children: [_logo(), _registrationForm(), _registerButton()],
             ),
           ),
         ),
@@ -67,24 +65,24 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _loginForm() {
+  Widget _registrationForm() {
     return Container(
-      height: devHeight! * 0.18,
+      height: devHeight! * 0.25,
       child: Form(
-        key: _loginFormKey,
+        key: _registerFormKey,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           mainAxisSize: MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.center,
-          children: [_emailTextField(), _passwordTextField()],
+          children: [_nameTextField(), _emailTextField(), _passwordTextField()],
         ),
       ),
     );
   }
 
-  Widget _emailTextField() {
+  Widget _nameTextField() {
     return TextFormField(
-      controller: _emailController,
+      controller: _nameController,
       style: TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.w500,
@@ -92,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
       cursorColor: Colors.white,
       decoration: InputDecoration(
-        hintText: "Email",
+        hintText: "Name",
         hintStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w400),
         enabledBorder: UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.white, width: 2),
@@ -104,23 +102,16 @@ class _LoginPageState extends State<LoginPage> {
           icon: Icon(Icons.clear, color: Colors.white),
           onPressed: () {
             setState(() {
-              _emailController.clear();
+              _nameController.clear();
             });
           },
         ),
       ),
+      validator: (_value) => _value!.isNotEmpty ? null : "Please enter a name",
       onSaved: (_value) {
         setState(() {
-          _email = _value;
+          _name = _value;
         });
-      },
-      validator: (_value) {
-        bool _result = _value!.contains(
-          RegExp(
-            r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
-          ),
-        );
-        return _result ? null : "Please enter a valid email";
       },
     );
   }
@@ -168,9 +159,52 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _loginButton() {
+  Widget _emailTextField() {
+    return TextFormField(
+      controller: _emailController,
+      style: TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w500,
+        fontSize: 18,
+      ),
+      cursorColor: Colors.white,
+      decoration: InputDecoration(
+        hintText: "Email",
+        hintStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w400),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.white, width: 2),
+        ),
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.white, width: 2),
+        ),
+        suffixIcon: IconButton(
+          icon: Icon(Icons.clear, color: Colors.white),
+          onPressed: () {
+            setState(() {
+              _emailController.clear();
+            });
+          },
+        ),
+      ),
+      onSaved: (_value) {
+        setState(() {
+          _email = _value;
+        });
+      },
+      validator: (_value) {
+        bool _result = _value!.contains(
+          RegExp(
+            r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",
+          ),
+        );
+        return _result ? null : "Please enter a valid email";
+      },
+    );
+  }
+
+  Widget _registerButton() {
     return MaterialButton(
-      onPressed: _loginUser,
+      onPressed: _registerUser,
       minWidth: devWidth! * 0.7,
       height: devHeight! * 0.06,
       color: Colors.orange,
@@ -178,25 +212,11 @@ class _LoginPageState extends State<LoginPage> {
         borderRadius: BorderRadius.all(Radius.circular(100)),
       ),
       child: const Text(
-        "Login",
+        "Register",
         style: TextStyle(
           color: Colors.white,
           fontSize: 25,
           fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _registerPageLink() {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, 'register'),
-      child: const Text(
-        "Don't have an account?",
-        style: TextStyle(
-          color: Colors.blue,
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
         ),
       ),
     );
@@ -233,15 +253,16 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _loginUser() async {
-    if (_loginFormKey.currentState!.validate()) {
-      _loginFormKey.currentState!.save();
-      bool _result = await _firebaseService!.loginUser(
+  void _registerUser() async {
+    if (_registerFormKey.currentState!.validate() /*&& _image != null*/ ) {
+      _registerFormKey.currentState!.save();
+      bool _result = await _firebaseService!.registerUser(
+        name: _name!,
         email: _email!,
         password: _password!,
       );
       if (_result) {
-        Navigator.popAndPushNamed(context, 'home');
+        Navigator.pop(context);
       }
     }
   }

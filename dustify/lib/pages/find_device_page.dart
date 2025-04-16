@@ -28,8 +28,7 @@ class _FindDevicesState extends State<FindDevices> {
             bonded
                 .where(
                   (device) =>
-                      device.platformName?.contains("Particulate Analyzer") ??
-                      false,
+                      device.platformName.contains("Particulate Analyzer"),
                 )
                 .toList();
       });
@@ -42,10 +41,7 @@ class _FindDevicesState extends State<FindDevices> {
     await BLEManager().connectToDevice(device);
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('connected_device_id', device.remoteId.str);
-    await prefs.setString(
-      'connected_device_name',
-      device.platformName ?? "Unknown",
-    );
+    await prefs.setString('connected_device_name', device.platformName);
     if (mounted) Navigator.pushReplacementNamed(context, 'home');
   }
 
@@ -84,7 +80,7 @@ class _FindDevicesState extends State<FindDevices> {
                   final device = pairedDevices[index];
                   return ListTile(
                     title: Text(
-                      device.platformName ?? "Unnamed",
+                      device.platformName,
                       style: const TextStyle(color: Colors.white),
                     ),
                     subtitle: Text(
