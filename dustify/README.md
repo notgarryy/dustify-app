@@ -9,14 +9,16 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - Persistent Storage: Saves connected device details using SharedPreferences.
 
 ## Dependencies
-- flutter_blue_plus: "1.35.3"<br>
-- firebase_core: "3.12.1"<br>
-- firebase_auth: "5.5.1"<br>
-- firebase_analytics: "11.4.4"<br>
-- cloud_firestore: "5.6.5"<br>
-- get_it: "8.0.3"<br>
-- shared_preferences: "2.5.3"<br>
+- flutter_blue_plus: "1.35.3"
+- firebase_core: "3.12.1"
+- firebase_auth: "5.5.1"
+- firebase_analytics: "11.4.4"
+- cloud_firestore: "5.6.5"
+- get_it: "8.0.3"
+- shared_preferences: "2.5.3"
 - fl_chart: "0.70.2"
+- syncfusion_flutter_gauges: "29.1.38"
+- flutter_native_splash: "2.4.6"
 
 ## Update History
 ### v0.0.1 - April 4th, 2025 
@@ -56,9 +58,12 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - Added line graph that shows data change in an hour
 - Updated AQI gauge, pointer now shows between the range in the gauge
 
+### v0.0.8 - April 16th, 2025
+- Added profile page
+- Added login, sign up, and logout feature - complete with Firebase integration
+
 ## TODO:
 - Send data to Firebase
 - History page
-- Login and register page
 
 [notgarryy]
