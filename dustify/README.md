@@ -21,49 +21,52 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - flutter_native_splash: "2.4.6"
 
 ## Update History
-### v0.0.1 - April 4th, 2025 
-- BLE scanner
-- BLE connection to ESP32
-- Read data from ESP32
+### v0.0.1 – April 4, 2025
+- Initial BLE scanner implementation.
+- Established BLE connection to ESP32.
+- Basic data reading from ESP32.
 
-### v0.0.2 - April 4th, 2025 
-- User Interface
+### v0.0.2 – April 4, 2025
+- Improved user interface.
 
-### v0.0.3 - April 5th, 2025 
-- Fixed crashing issues
-- Fixed BLE connection issues
-- Added BLE manager — now the data is available on the home page
-- Added a placeholder AQI gauge
+### v0.0.3 – April 5, 2025
+- Fixed app crashes and BLE connection issues.
+- Introduced a BLE manager for centralized data handling.
+- Added a placeholder AQI gauge.
 
-### v0.0.4 - April 12th, 2025 
-- Updated the code to receive string data from the ESP32 device, instead of integer data
-- Implemented a parsing feature, to parse the string data into PM2.5 and PM10 data
-- Updated the AQI meter threshold parameter
+### v0.0.4 – April 12, 2025
+- Updated ESP32 communication to receive string data (instead of integers).
+- Implemented a parser to extract PM2.5 and PM10 values from strings.
+- Adjusted AQI gauge thresholds.
 
-### v0.0.5 - April 13th, 2025
-- Firebase integrated
-- Bottom navigation can navigate between the main page and the profile page
+### v0.0.5 – April 13, 2025
+- Integrated Firebase for backend services.
+- Added bottom navigation (Home ↔ Profile).
 
-### v0.0.6 - April 14th, 2025
-- Added splash screen
-- Updated app icon
-- Updated app name
+### v0.0.6 – April 14, 2025
+- Added a custom splash screen.
+- Updated app icon and name.
 
-### v0.0.7 - April 15th, 2025
-- Fixed splash screen resolution
-- Improved BLE connection, it now requires pairing with device first, then only it can receive data from the device
-- Remove BLE scanner
-- Able to receive data when application is running in the background
-- When a past paired device is detected, will automatically reconnect with device upon opening the application
-- Added line graph that shows data change in an hour
-- Updated AQI gauge, pointer now shows between the range in the gauge
+### v0.0.7 – April 15, 2025
+- Fixed splash screen resolution issues.
+- Improved BLE pairing flow (now requires pairing before data exchange).
+- Removed standalone BLE scanner (auto-reconnects to paired devices).
+- Enabled background data reception.
+- Added hourly line graphs for PM2.5/PM10 trends.
+- Enhanced AQI gauge with dynamic pointer positioning.
 
-### v0.0.8 - April 16th, 2025
-- Added profile page
-- Added login, sign up, and logout feature - complete with Firebase integration
+### v0.0.8 – April 16, 2025
+- Added profile page with Firebase Auth (login/signup/logout).
 
-## TODO:
-- Send data to Firebase
-- History page
+### v0.0.9 – April 27, 2025
+- Introduced history page with Firestore integration.
+- Fixed login bugs.
+- Added a 'forgot password' feature.
+
+### TODO LIST:
+- Remove data from Firestore that is over 30 days.
+- Add more features for profile page.
+- Finishing touches.
+- User testing.
 
 [notgarryy]

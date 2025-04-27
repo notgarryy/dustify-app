@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dustify/services/firebase_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';

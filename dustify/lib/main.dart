@@ -1,4 +1,5 @@
 import 'package:dustify/pages/find_device_page.dart';
+import 'package:dustify/pages/history_page.dart';
 import 'package:dustify/pages/home_page.dart';
 import 'package:dustify/pages/data_page.dart';
 import 'package:dustify/pages/login_page.dart';
@@ -15,13 +16,17 @@ import 'dart:async';
 void main() {
   runZonedGuarded(
     () async {
+      FirebaseService? _firebaseService;
       WidgetsFlutterBinding.ensureInitialized();
 
       await BLEManager().loadRecentData();
       await BLEManager().tryReconnectFromPreferences();
 
       await Firebase.initializeApp();
-      GetIt.instance.registerSingleton<FirebaseService>(FirebaseService());
+      _firebaseService = FirebaseService();
+      GetIt.instance.registerSingleton<FirebaseService>(_firebaseService);
+
+      await _firebaseService.checkAndLoadUserData();
 
       FlutterError.onError = (FlutterErrorDetails details) {
         FlutterError.presentError(details);
@@ -53,6 +58,7 @@ class MyApp extends StatelessWidget {
         'profile': (context) => ProfilePage(),
         'login': (context) => LoginPage(),
         'register': (context) => RegisterPage(),
+        'history': (context) => HistoryPage(),
       },
     );
   }

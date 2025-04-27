@@ -47,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: Color.fromRGBO(34, 31, 31, 1),
       body: SafeArea(
         child: Container(
-          height: devHeight! * 0.5,
+          height: devHeight! * 0.55,
           padding: EdgeInsets.symmetric(horizontal: devWidth! * 0.05),
           child: Center(
             child: Column(
@@ -58,6 +58,7 @@ class _LoginPageState extends State<LoginPage> {
                 _logo(),
                 _loginForm(),
                 _loginButton(),
+                _forgotPasswordLink(),
                 _registerPageLink(),
               ],
             ),
@@ -168,6 +169,97 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Widget _forgotPasswordLink() {
+    return GestureDetector(
+      onTap: _forgotPassword,
+      child: const Text(
+        "Forgot Password?",
+        style: TextStyle(
+          color: Colors.blue,
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+    );
+  }
+
+  void _forgotPassword() async {
+    if (_emailController.text.isEmpty) {
+      // Notify user to enter email first
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("Missing Email"),
+            content: Text("Please enter your email first."),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    bool result = await _firebaseService!.sendPasswordResetEmail(
+      _emailController.text,
+    );
+    if (result) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(
+              "Password Reset Sent!",
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            content: Text(
+              "Check your email for reset instructions.",
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.black,
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                },
+                child: Text("OK", style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("Error"),
+            content: Text(
+              "Failed to send password reset email. Please try again.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   Widget _loginButton() {
     return MaterialButton(
       onPressed: _loginUser,
@@ -242,6 +334,34 @@ class _LoginPageState extends State<LoginPage> {
       );
       if (_result) {
         Navigator.popAndPushNamed(context, 'home');
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text(
+                "Login Failed!",
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: Text(
+                "Incorrect email or password. Please try again.",
+                style: TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.black,
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog
+                  },
+                  child: Text("OK", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
       }
     }
   }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:dustify/services/firebase_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,14 +23,11 @@ class BLEManager {
   Stream<Map<String, double>> get parsedDataStream =>
       _parsedDataController.stream;
 
-  // Last known data
   Map<String, double>? _lastKnownData;
   Map<String, double>? get lastKnownData => _lastKnownData;
 
-  // Reconnect guard
   bool _isConnectingOrConnected = false;
 
-  // Recent values (max 60 entries each)
   List<double> last60PM25 = [];
   List<double> last60PM10 = [];
 
@@ -115,6 +113,8 @@ class BLEManager {
       if (parts.length == 2) {
         double pm25 = double.parse(parts[0]);
         double pm10 = double.parse(parts[1]);
+
+        FirebaseService().sendPMData(pm25: pm25, pm10: pm10);
 
         Map<String, double> data = {'PM2.5': pm25, 'PM10': pm10};
         _lastKnownData = data;
