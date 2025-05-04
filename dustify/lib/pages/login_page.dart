@@ -19,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   String? _email, _password;
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   TextEditingController _emailController = TextEditingController();
 
@@ -262,20 +263,41 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _loginButton() {
     return MaterialButton(
-      onPressed: _loginUser,
+      onPressed: _isLoading ? null : _loginUser,
       minWidth: devWidth! * 0.7,
       height: devHeight! * 0.06,
       color: Colors.orange,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(100)),
       ),
-      child: const Text(
-        "Login",
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 25,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedOpacity(
+            opacity: _isLoading ? 0.0 : 1.0,
+            duration: Duration(milliseconds: 300),
+            child: const Text(
+              "Login",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 25,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          AnimatedOpacity(
+            opacity: _isLoading ? 1.0 : 0.0,
+            duration: Duration(milliseconds: 300),
+            child: SizedBox(
+              width: 25,
+              height: 25,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 3,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -328,10 +350,19 @@ class _LoginPageState extends State<LoginPage> {
   void _loginUser() async {
     if (_loginFormKey.currentState!.validate()) {
       _loginFormKey.currentState!.save();
+      setState(() {
+        _isLoading = true;
+      });
+
       bool _result = await _firebaseService!.loginUser(
         email: _email!,
         password: _password!,
       );
+
+      setState(() {
+        _isLoading = false;
+      });
+
       if (_result) {
         Navigator.popAndPushNamed(context, 'home');
       } else {
@@ -354,7 +385,7 @@ class _LoginPageState extends State<LoginPage> {
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(context); // Close the dialog
+                    Navigator.pop(context);
                   },
                   child: Text("OK", style: TextStyle(color: Colors.white)),
                 ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dustify/services/firebase_manager.dart';
-import 'package:intl/intl.dart'; // Import the intl package
-import 'package:fl_chart/fl_chart.dart'; // Import fl_chart
+import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:get_it/get_it.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -12,21 +13,45 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  final FirebaseService _firebaseService = FirebaseService();
+  FirebaseService? _firebaseService;
 
   double? devHeight, devWidth;
+  bool? hasUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _firebaseService = GetIt.instance.get<FirebaseService>();
+    final loggedInUser = _firebaseService?.currentFirebaseUser;
+    hasUser = loggedInUser != null;
+  }
 
   @override
   Widget build(BuildContext context) {
     devHeight = MediaQuery.of(context).size.height;
-    devWidth = MediaQuery.of(context).size.height;
+    devWidth = MediaQuery.of(context).size.width;
+
+    if (hasUser == false) {
+      return const Scaffold(
+        backgroundColor: Color.fromRGBO(34, 31, 31, 1),
+        body: Center(
+          child: Text(
+            'Please login to view history.',
+            style: TextStyle(color: Colors.white, fontSize: 18),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Color.fromRGBO(34, 31, 31, 1),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firebaseService.getAllPmDataStream(),
+        stream: _firebaseService!.getAllPmDataStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.orange),
+            );
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -183,7 +208,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         Center(
                           child: SizedBox(
                             height: 250,
-                            width: devWidth! * 0.35,
+                            width: devWidth! * 0.85,
                             child: LineChart(
                               LineChartData(
                                 gridData: FlGridData(

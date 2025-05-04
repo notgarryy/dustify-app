@@ -98,8 +98,8 @@ class _DataPageState extends State<DataPage> {
       String? deviceId = prefs.getString('connected_device_id');
 
       setState(() {
-        connectedDeviceName = deviceName; // KEEP null if not available
-        connectedDeviceId = deviceId ?? ""; // fallback is OK here
+        connectedDeviceName = deviceName;
+        connectedDeviceId = deviceId ?? "";
       });
     } catch (e, stack) {
       debugPrint("Error in _loadConnectedDevice: $e");
@@ -141,9 +141,22 @@ class _DataPageState extends State<DataPage> {
                   ],
                 ),
                 Spacer(),
-                IconButton(
-                  icon: Icon(Icons.delete_forever_rounded, color: Colors.red),
-                  onPressed: _clearConnectedDevice,
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.refresh, color: Colors.orangeAccent),
+                      tooltip: "Reconnect",
+                      onPressed: _refreshConnection,
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.delete_forever_rounded,
+                        color: Colors.red,
+                      ),
+                      tooltip: "Disconnect",
+                      onPressed: _clearConnectedDevice,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -234,15 +247,12 @@ class _DataPageState extends State<DataPage> {
 
   Future<void> _clearConnectedDevice() async {
     try {
-      // Disconnect from BLE device
       await BLEManager().disconnect();
 
-      // Clear SharedPreferences
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.remove('connected_device_name');
       await prefs.remove('connected_device_id');
 
-      // Clear local state
       if (mounted) {
         setState(() {
           connectedDeviceName = null;
@@ -257,6 +267,24 @@ class _DataPageState extends State<DataPage> {
     } catch (e, stack) {
       debugPrint("Error in _clearConnectedDevice: $e");
       debugPrint("Stack trace: $stack");
+    }
+  }
+
+  Future<void> _refreshConnection() async {
+    try {
+      debugPrint("Refreshing Bluetooth connection...");
+      await BLEManager().disconnect();
+
+      if (mounted) {
+        setState(() {
+          deviceData = null;
+        });
+      }
+
+      await BLEManager().tryReconnectFromPreferences();
+      debugPrint("Reconnection triggered.");
+    } catch (e) {
+      debugPrint("Error during refresh: $e");
     }
   }
 

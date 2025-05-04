@@ -45,7 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     height: devHeight! * 0.23,
                     width: devWidth! * 0.95,
                     decoration: BoxDecoration(
-                      color: Colors.black26,
+                      color: Colors.black,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -80,7 +80,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
         ),
         SizedBox(height: devHeight! * 0.02),
-        _placeholder(),
+        _aboutSection(),
       ],
     );
   }
@@ -103,13 +103,54 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _placeholder() {
+  Widget _aboutSection() {
     return Container(
-      height: devHeight! * 0.2,
+      height: devHeight! * 0.55,
       width: devWidth! * 0.95,
       decoration: BoxDecoration(
-        color: Colors.lightBlueAccent,
+        color: Colors.black,
         borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.all(30),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Colors.black,
+                  child: Icon(
+                    Icons.info_outline,
+                    color: Colors.orange,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "About",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            "This app is developed to help you monitor and analyze PM2.5 and PM10 data from your BLE-connected Dustify device. Stay safe by keeping track of air quality trends wherever you go.",
+            textAlign: TextAlign.justify,
+            style: TextStyle(
+              color: Colors.orange,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -134,7 +175,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _logoutButton() {
     return MaterialButton(
-      color: Colors.red,
       padding: EdgeInsets.only(top: 12, bottom: 12, left: 20, right: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       onPressed: () async {

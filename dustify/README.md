@@ -63,9 +63,12 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - Fixed login bugs.
 - Added a 'forgot password' feature.
 
+### v0.0.10 - May 4, 2025
+- Added a feature to automatically remove data from Firestore that is over 30 days.
+- Added an about section on profile page.
+- Added a 'restart connection' feature on the data page.
+
 ### TODO LIST:
-- Remove data from Firestore that is over 30 days.
-- Add more features for profile page.
 - Finishing touches.
 - User testing.
 

@@ -114,11 +114,25 @@ class FirebaseService {
       DateTime now = DateTime.now();
       DateTime startOfDay = DateTime(now.year, now.month, now.day);
       DateTime endOfDay = startOfDay.add(Duration(days: 1));
+      DateTime threshold = now.subtract(Duration(days: 30));
 
-      QuerySnapshot todaySnapshot =
+      final oldDocs =
           await userDataCollection
-              .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-              .where('timestamp', isLessThan: endOfDay)
+              .where('timestamp', isLessThan: Timestamp.fromDate(threshold))
+              .get();
+
+      for (final doc in oldDocs.docs) {
+        await doc.reference.delete();
+        debugPrint("Deleted old PM data: ${doc.id}");
+      }
+
+      final todaySnapshot =
+          await userDataCollection
+              .where(
+                'timestamp',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+              )
+              .where('timestamp', isLessThan: Timestamp.fromDate(endOfDay))
               .orderBy('timestamp')
               .get();
 
@@ -126,21 +140,34 @@ class FirebaseService {
 
       if (todayCount >= 12) {
         debugPrint("Already reached 12 data points today. Skipping save.");
-      } else {
-        String customDocId = "${now.millisecondsSinceEpoch}_data$todayCount";
-        DateTime expiry = now.add(Duration(minutes: 1));
-
-        await userDataCollection.doc(customDocId).set({
-          "pm25": pm25,
-          "pm10": pm10,
-          "timestamp": now,
-          "expiresAt": expiry,
-        });
-
-        debugPrint(
-          "PM data sent to Firestore for today. Current count: ${todayCount + 1}",
-        );
+        return;
       }
+
+      String customDocId = "${now.millisecondsSinceEpoch}_data$todayCount";
+      final timeSent =
+          "${now.hour.toString().padLeft(2, '0')}:"
+          "${now.minute.toString().padLeft(2, '0')}:"
+          "${now.second.toString().padLeft(2, '0')}."
+          "${(now.millisecond).toString().padLeft(3, '0')}";
+
+      DateTime now2 = DateTime.now();
+      final timeReceived =
+          "${now2.hour.toString().padLeft(2, '0')}:"
+          "${now2.minute.toString().padLeft(2, '0')}:"
+          "${now2.second.toString().padLeft(2, '0')}."
+          "${(now2.millisecond).toString().padLeft(3, '0')}";
+
+      await userDataCollection.doc(customDocId).set({
+        "pm25": pm25,
+        "pm10": pm10,
+        "sent": timeSent,
+        "received": timeReceived,
+        "timestamp": Timestamp.fromDate(now),
+      });
+
+      debugPrint(
+        "$timeSent - PM data sent to Firestore. Current count: ${todayCount + 1}",
+      );
     } catch (e) {
       debugPrint("Failed to send PM data: $e");
     }

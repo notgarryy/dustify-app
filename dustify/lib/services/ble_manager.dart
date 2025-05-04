@@ -70,7 +70,13 @@ class BLEManager {
             characteristic.lastValueStream.listen((value) {
               if (value.isNotEmpty) {
                 String data = utf8.decode(value);
-                debugPrint("Decoded BLE data: $data");
+                final now = DateTime.now();
+                final time =
+                    "${now.hour.toString().padLeft(2, '0')}:"
+                    "${now.minute.toString().padLeft(2, '0')}:"
+                    "${now.second.toString().padLeft(2, '0')}."
+                    "${(now.millisecond).toString().padLeft(3, '0')}";
+                debugPrint("$time - Received BLE data: $data");
                 _parseSensorData(data);
               }
             });
