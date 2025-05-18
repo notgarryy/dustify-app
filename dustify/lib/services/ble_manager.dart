@@ -6,7 +6,6 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BLEManager {
-  // Singleton pattern
   static final BLEManager _instance = BLEManager._internal();
   factory BLEManager() => _instance;
   BLEManager._internal();
@@ -31,6 +30,21 @@ class BLEManager {
   List<double> last60PM25 = [];
   List<double> last60PM10 = [];
 
+  DateTime? _lastDataTimestamp;
+  Timer? _dataMonitorTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 3;
+
+  StreamSubscription<List<int>>? _notificationSubscription;
+
+  final StreamController<bool> _connectionStatusController =
+      StreamController<bool>.broadcast();
+  Stream<bool> get connectionStatusStream => _connectionStatusController.stream;
+  bool get isConnected => connectedDevice != null;
+
+  Timer? _autoReconnectScanTimer;
+  bool _hasScanListener = false;
+
   Future<void> connectToDevice(BluetoothDevice device) async {
     if (_isConnectingOrConnected) {
       debugPrint("Already connecting or connected. Skipping...");
@@ -40,21 +54,19 @@ class BLEManager {
     _isConnectingOrConnected = true;
 
     try {
-      // Check if the device is already connected
       var connectedDevices = await FlutterBluePlus.connectedDevices;
-      if (connectedDevices.isNotEmpty) {
-        for (var d in connectedDevices) {
-          if (d.remoteId == device.remoteId) {
-            debugPrint('Already connected to device: ${device.remoteId}');
-            connectedDevice = d;
-            _isConnectingOrConnected = false;
-            return;
-          }
-        }
+      if (connectedDevices.any((d) => d.remoteId == device.remoteId)) {
+        debugPrint('Already connected to device: ${device.remoteId}');
+        connectedDevice = device;
+        _isConnectingOrConnected = false;
+        _connectionStatusController.add(true);
+        return;
       }
 
       await device.connect(timeout: Duration(seconds: 10));
       connectedDevice = device;
+      _reconnectAttempts = 0;
+      _connectionStatusController.add(true);
 
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('connected_device_id', device.remoteId.str);
@@ -65,11 +77,21 @@ class BLEManager {
         for (var characteristic in service.characteristics) {
           if (characteristic.properties.notify) {
             notifyCharacteristic = characteristic;
-            await characteristic.setNotifyValue(true);
 
-            characteristic.lastValueStream.listen((value) {
+            // Cancel any existing subscription
+            await _notificationSubscription?.cancel();
+
+            // Enable notifications if not already enabled
+            if (!characteristic.isNotifying) {
+              await characteristic.setNotifyValue(true);
+            }
+
+            _notificationSubscription = characteristic.lastValueStream.listen((
+              value,
+            ) {
               if (value.isNotEmpty) {
                 String data = utf8.decode(value);
+                _lastDataTimestamp = DateTime.now();
                 final now = DateTime.now();
                 final time =
                     "${now.hour.toString().padLeft(2, '0')}:"
@@ -87,13 +109,17 @@ class BLEManager {
 
       device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected) {
+          debugPrint("Device disconnected: ${device.remoteId}");
           connectedDevice = null;
           _isConnectingOrConnected = false;
           _dataController.add(-1);
+          _connectionStatusController.add(false);
         }
       });
     } catch (e) {
       debugPrint("Connection failed: $e");
+      connectedDevice = null;
+      _connectionStatusController.add(false);
     }
 
     _isConnectingOrConnected = false;
@@ -109,7 +135,12 @@ class BLEManager {
       connectedDevice = null;
       notifyCharacteristic = null;
       _isConnectingOrConnected = false;
+
+      await _notificationSubscription?.cancel();
+      _notificationSubscription = null;
+
       _dataController.add(-1);
+      _connectionStatusController.add(false);
     }
   }
 
@@ -126,14 +157,12 @@ class BLEManager {
         _lastKnownData = data;
         _parsedDataController.add(data);
 
-        // Save to internal list
         last60PM25.add(pm25);
         last60PM10.add(pm10);
 
         if (last60PM25.length > 60) last60PM25.removeAt(0);
         if (last60PM10.length > 60) last60PM10.removeAt(0);
 
-        // Persist it
         await saveRecentData();
       } else {
         debugPrint("Invalid data format: $rawData");
@@ -170,6 +199,13 @@ class BLEManager {
       return;
     }
 
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      debugPrint("Max reconnect attempts reached.");
+      return;
+    }
+
+    _reconnectAttempts++;
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? savedId = prefs.getString('connected_device_id');
 
@@ -184,5 +220,46 @@ class BLEManager {
         break;
       }
     }
+  }
+
+  /// Starts periodic scanning to auto reconnect when known device advertises again
+  void startAutoReconnectScan() {
+    if (_autoReconnectScanTimer != null && _autoReconnectScanTimer!.isActive)
+      return;
+
+    _autoReconnectScanTimer = Timer.periodic(Duration(seconds: 10), (
+      timer,
+    ) async {
+      if (connectedDevice != null || _isConnectingOrConnected) return;
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? savedId = prefs.getString('connected_device_id');
+      if (savedId == null) return;
+
+      if (!_hasScanListener) {
+        _hasScanListener = true;
+        FlutterBluePlus.scanResults.listen((results) async {
+          for (ScanResult r in results) {
+            if (r.device.remoteId.str == savedId) {
+              debugPrint(
+                "🔄 Found known device advertising: ${r.device.remoteId}",
+              );
+              await FlutterBluePlus.stopScan();
+              await connectToDevice(r.device);
+              break;
+            }
+          }
+        });
+      }
+
+      await FlutterBluePlus.startScan(timeout: Duration(seconds: 5));
+    });
+  }
+
+  /// Stops the periodic auto reconnect scanning
+  void stopAutoReconnectScan() {
+    _autoReconnectScanTimer?.cancel();
+    _autoReconnectScanTimer = null;
+    _hasScanListener = false;
   }
 }

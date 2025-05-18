@@ -68,8 +68,12 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - Added an about section on profile page.
 - Added a 'restart connection' feature on the data page.
 
+### v0.1.0 - May 18, 2025
+- Bug fixes with BLE connectivity.
+- Data page now shows connectivity status.
+- Updated Firestore data management.
+
 ### TODO LIST:
-- Finishing touches.
 - User testing.
 
 [notgarryy]

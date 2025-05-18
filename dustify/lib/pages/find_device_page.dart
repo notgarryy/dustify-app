@@ -12,6 +12,7 @@ class FindDevices extends StatefulWidget {
 
 class _FindDevicesState extends State<FindDevices> {
   List<BluetoothDevice> pairedDevices = [];
+  bool isConnecting = false; // To track connection status
 
   @override
   void initState() {
@@ -38,11 +39,31 @@ class _FindDevicesState extends State<FindDevices> {
   }
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
-    await BLEManager().connectToDevice(device);
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('connected_device_id', device.remoteId.str);
-    await prefs.setString('connected_device_name', device.platformName);
-    if (mounted) Navigator.pushReplacementNamed(context, 'home');
+    setState(() {
+      isConnecting = true; // Start loading indicator
+    });
+
+    try {
+      await BLEManager().connectToDevice(device);
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('connected_device_id', device.remoteId.str);
+      await prefs.setString('connected_device_name', device.platformName);
+
+      if (mounted) {
+        setState(() {
+          isConnecting = false; // Stop loading indicator after connection
+        });
+        Navigator.pushReplacementNamed(context, 'home');
+      }
+    } catch (e) {
+      setState(() {
+        isConnecting = false; // Stop loading indicator on error
+      });
+      // Show an error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Error connecting to device")),
+      );
+    }
   }
 
   @override
@@ -66,7 +87,23 @@ class _FindDevicesState extends State<FindDevices> {
         ),
       ),
       body:
-          pairedDevices.isEmpty
+          isConnecting
+              ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: Colors.orange),
+                    SizedBox(
+                      height: 10,
+                    ), // Add some space between the spinner and text
+                    Text(
+                      "Connecting...",
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                  ],
+                ),
+              )
+              : pairedDevices.isEmpty
               ? const Center(
                 child: Text(
                   "No paired devices found.\nPlease pair via Bluetooth settings.",

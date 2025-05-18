@@ -16,30 +16,49 @@ class _DataPageState extends State<DataPage> {
   String? connectedDeviceName;
   String? connectedDeviceId;
   Map<String, double>? deviceData;
+  bool isConnected = false;
   StreamSubscription<Map<String, double>>? _dataSubscription;
 
   @override
   void initState() {
     super.initState();
+    // Start auto reconnect scanning when this page is active
+    BLEManager().startAutoReconnectScan();
+
     _loadConnectedDevice();
 
+    // Try to reconnect from saved preferences
     BLEManager().tryReconnectFromPreferences();
 
+    // Load cached last known data if any
     final cached = BLEManager().lastKnownData;
     if (cached != null) {
       setState(() {
         deviceData = cached;
+        isConnected = true;
       });
     }
 
+    // Listen for incoming parsed data
     _dataSubscription = BLEManager().parsedDataStream.listen((data) {
       if (mounted) {
         debugPrint("New parsed data received: $data");
         setState(() {
           deviceData = data;
+          isConnected = true;
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    // Stop auto reconnect scanning when this page is disposed
+    BLEManager().stopAutoReconnectScan();
+
+    // Cancel the data subscription
+    _dataSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -47,7 +66,7 @@ class _DataPageState extends State<DataPage> {
     double? _devHeight = MediaQuery.of(context).size.height;
     double? _devWidth = MediaQuery.of(context).size.width;
     return Scaffold(
-      backgroundColor: Color.fromRGBO(34, 31, 31, 1),
+      backgroundColor: const Color.fromRGBO(34, 31, 31, 1),
       body: SafeArea(
         child: Column(
           children: [
@@ -74,8 +93,8 @@ class _DataPageState extends State<DataPage> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                   height: _devHeight * 0.05,
-                  color: Color.fromRGBO(255, 116, 46, 1),
-                  child: Text(
+                  color: const Color.fromRGBO(255, 116, 46, 1),
+                  child: const Text(
                     "+ Add a new device",
                     style: TextStyle(
                       color: Colors.white,
@@ -119,68 +138,87 @@ class _DataPageState extends State<DataPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.bluetooth, color: Colors.cyan, size: 30),
-                SizedBox(width: 15),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            StreamBuilder<bool>(
+              stream: BLEManager().connectionStatusStream,
+              initialData: BLEManager().isConnected,
+              builder: (context, snapshot) {
+                final bool isConnected = snapshot.data ?? false;
+
+                return Row(
                   children: [
-                    Text(
-                      connectedDeviceName!,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    const Icon(Icons.bluetooth, color: Colors.cyan, size: 30),
+                    const SizedBox(width: 15),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          connectedDeviceName ?? "Unknown Device",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          isConnected
+                              ? "Status: Connected"
+                              : "Status: Disconnected",
+                          style: TextStyle(
+                            color:
+                                isConnected
+                                    ? Colors.greenAccent
+                                    : Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      "Device ID: ${connectedDeviceId!.isNotEmpty ? connectedDeviceId! : "No ID available"}",
-                      style: TextStyle(color: Colors.grey),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.refresh,
+                            color: Colors.orangeAccent,
+                          ),
+                          tooltip: "Reconnect",
+                          onPressed: _refreshConnection,
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_forever_rounded,
+                            color: Colors.red,
+                          ),
+                          tooltip: "Disconnect",
+                          onPressed: _clearConnectedDevice,
+                        ),
+                      ],
                     ),
                   ],
-                ),
-                Spacer(),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.refresh, color: Colors.orangeAccent),
-                      tooltip: "Reconnect",
-                      onPressed: _refreshConnection,
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.delete_forever_rounded,
-                        color: Colors.red,
-                      ),
-                      tooltip: "Disconnect",
-                      onPressed: _clearConnectedDevice,
-                    ),
-                  ],
-                ),
-              ],
+                );
+              },
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             deviceData != null
                 ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Center(
                       child: Column(
                         children: [
                           Text(
                             "PM10: ${deviceData!['PM10']} µg/m³",
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 18,
                             ),
                           ),
-                          SizedBox(height: 5),
+                          const SizedBox(height: 5),
                           Text(
                             "${_getAQILevel(deviceData!['PM10'], false)}",
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 18,
@@ -190,23 +228,23 @@ class _DataPageState extends State<DataPage> {
                       ),
                     ),
                     AQIMeter(value: deviceData!['PM10']!, isPM2_5: false),
-                    LineGraph(isPM2_5: false),
-                    SizedBox(height: 30),
+                    const LineGraph(isPM2_5: false),
+                    const SizedBox(height: 30),
                     Center(
                       child: Column(
                         children: [
                           Text(
                             "PM2.5 : ${deviceData!['PM2.5']} µg/m³",
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 18,
                             ),
                           ),
-                          SizedBox(height: 5),
+                          const SizedBox(height: 5),
                           Text(
                             "${_getAQILevel(deviceData!['PM2.5'], true)}",
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 18,
@@ -216,12 +254,21 @@ class _DataPageState extends State<DataPage> {
                       ),
                     ),
                     AQIMeter(value: deviceData!['PM2.5']!, isPM2_5: true),
-                    LineGraph(isPM2_5: true),
+                    const LineGraph(isPM2_5: true),
                   ],
                 )
-                : Text(
-                  "Live Data: Waiting...",
-                  style: TextStyle(color: Colors.orangeAccent, fontSize: 16),
+                : Column(
+                  children: [
+                    Text(
+                      isConnected ? "Connected" : "Disconnected",
+                      style: TextStyle(
+                        color:
+                            isConnected ? Colors.greenAccent : Colors.redAccent,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
           ],
         ),
@@ -258,12 +305,13 @@ class _DataPageState extends State<DataPage> {
           connectedDeviceName = null;
           connectedDeviceId = null;
           deviceData = null;
+          isConnected = false;
         });
       }
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Device disconnected")));
+      ).showSnackBar(const SnackBar(content: Text("Device disconnected")));
     } catch (e, stack) {
       debugPrint("Error in _clearConnectedDevice: $e");
       debugPrint("Stack trace: $stack");
@@ -278,19 +326,16 @@ class _DataPageState extends State<DataPage> {
       if (mounted) {
         setState(() {
           deviceData = null;
+          isConnected = false;
         });
       }
+
+      await Future.delayed(const Duration(seconds: 2));
 
       await BLEManager().tryReconnectFromPreferences();
       debugPrint("Reconnection triggered.");
     } catch (e) {
       debugPrint("Error during refresh: $e");
     }
-  }
-
-  @override
-  void dispose() {
-    _dataSubscription?.cancel();
-    super.dispose();
   }
 }
