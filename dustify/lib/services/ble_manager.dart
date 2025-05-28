@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:dustify/services/firebase_manager.dart';
+import 'package:dustify/services/notifications_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +30,7 @@ class BLEManager {
 
   List<double> last60PM25 = [];
   List<double> last60PM10 = [];
+  List<DateTime> last60Timestamps = [];
 
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 3;
@@ -42,6 +44,8 @@ class BLEManager {
 
   Timer? _autoReconnectScanTimer;
   bool _hasScanListener = false;
+
+  // Removed _lastNotificationTime variable - we'll always read from prefs
 
   Future<void> connectToDevice(BluetoothDevice device) async {
     if (_isConnectingOrConnected) {
@@ -141,6 +145,7 @@ class BLEManager {
     }
   }
 
+  // Make _parseSensorData async because we await inside
   void _parseSensorData(String rawData) async {
     try {
       List<String> parts = rawData.split('#');
@@ -148,17 +153,41 @@ class BLEManager {
         double pm25 = double.parse(parts[0]);
         double pm10 = double.parse(parts[1]);
 
+        // Await on _canSendNotification()
+        if ((pm25 >= 55.0 || pm10 >= 75.0) && await _canSendNotification()) {
+          String title;
+          String body =
+              "Airborne particles are at unsafe levels. Limit outdoor exposure, close windows, and use an air purifier if available.";
+
+          if (pm25 >= 55.0) {
+            title = "Unhealthy Air Alert: High PM2.5 Levels Detected";
+          } else {
+            title = "Unhealthy Air Alert: High PM10 Levels Detected";
+          }
+
+          await NotificationService().showNotification(
+            title: title,
+            body: body,
+          );
+
+          await _updateLastNotificationTime();
+        }
+
         FirebaseService().sendPMData(pm25: pm25, pm10: pm10);
 
         Map<String, double> data = {'PM2.5': pm25, 'PM10': pm10};
         _lastKnownData = data;
         _parsedDataController.add(data);
 
+        final now = DateTime.now();
+
         last60PM25.add(pm25);
         last60PM10.add(pm10);
+        last60Timestamps.add(now);
 
         if (last60PM25.length > 60) last60PM25.removeAt(0);
         if (last60PM10.length > 60) last60PM10.removeAt(0);
+        if (last60Timestamps.length > 60) last60Timestamps.removeAt(0);
 
         await saveRecentData();
       } else {
@@ -179,15 +208,28 @@ class BLEManager {
       'recent_pm10',
       last60PM10.map((e) => e.toStringAsFixed(2)).toList(),
     );
+    prefs.setStringList(
+      'recent_timestamps',
+      last60Timestamps.map((dt) => dt.toIso8601String()).toList(),
+    );
   }
 
   Future<void> loadRecentData() async {
     final prefs = await SharedPreferences.getInstance();
     final pm25Str = prefs.getStringList('recent_pm25') ?? [];
     final pm10Str = prefs.getStringList('recent_pm10') ?? [];
+    final timestampsStr = prefs.getStringList('recent_timestamps') ?? [];
 
     last60PM25 = pm25Str.map((e) => double.tryParse(e) ?? 0.0).toList();
     last60PM10 = pm10Str.map((e) => double.tryParse(e) ?? 0.0).toList();
+    last60Timestamps =
+        timestampsStr.map((e) {
+          try {
+            return DateTime.parse(e);
+          } catch (_) {
+            return DateTime.now();
+          }
+        }).toList();
   }
 
   Future<void> tryReconnectFromPreferences() async {
@@ -258,5 +300,27 @@ class BLEManager {
     _autoReconnectScanTimer?.cancel();
     _autoReconnectScanTimer = null;
     _hasScanListener = false;
+  }
+
+  // Now async, reading from SharedPreferences
+  Future<bool> _canSendNotification() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final lastTimestamp = prefs.getInt('lastNotificationTime');
+    final intervalMinutes =
+        prefs.getInt('notificationInterval') ?? 10; // default 10 minutes
+
+    if (lastTimestamp == null) return true;
+
+    final lastTime = DateTime.fromMillisecondsSinceEpoch(lastTimestamp);
+    final now = DateTime.now();
+
+    return now.difference(lastTime) >= Duration(minutes: intervalMinutes);
+  }
+
+  Future<void> _updateLastNotificationTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    await prefs.setInt('lastNotificationTime', now.millisecondsSinceEpoch);
   }
 }

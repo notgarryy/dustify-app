@@ -37,6 +37,34 @@ class FirebaseService {
     }
   }
 
+  Future<void> sendConnectionStatus(bool connected) async {
+    final user = _auth.currentUser;
+    debugPrint(
+      "sendConnectionStatus called. User: ${user?.uid}, connected: $connected",
+    );
+
+    if (user == null) {
+      debugPrint("No user logged in. Cannot send connection status.");
+      return;
+    }
+
+    try {
+      CollectionReference connectionCollection = _db
+          .collection(USER_COLLECTION)
+          .doc(user.uid)
+          .collection("pm_data");
+
+      await connectionCollection.doc("!connection").set({
+        "connected": connected,
+        "timestamp": FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      debugPrint("Connection status updated to Firestore: $connected");
+    } catch (e) {
+      debugPrint("Failed to update connection status: $e");
+    }
+  }
+
   Future<bool> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);

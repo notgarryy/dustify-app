@@ -113,19 +113,30 @@ class _HistoryPageState extends State<HistoryPage> {
               List<FlSpot> pm25Spots = [];
               List<FlSpot> pm10Spots = [];
 
-              // Clip nilai sebelum dimasukkan ke FlSpot supaya tidak overshoot
-              for (int i = 0; i < dayData.length; i++) {
+              // Filter out entries where either avgPM25 or avgPM10 is null
+              final filteredDayData =
+                  dayData
+                      .where(
+                        (dataPoint) =>
+                            dataPoint['avgPM25'] != null &&
+                            dataPoint['avgPM10'] != null,
+                      )
+                      .toList();
+
+              // Use this filtered list for spots and tooltips
+              pm25Spots.clear();
+              pm10Spots.clear();
+
+              for (int i = 0; i < filteredDayData.length; i++) {
+                final dataPoint = filteredDayData[i];
+                final pm25 = dataPoint['avgPM25'];
+                final pm10 = dataPoint['avgPM10'];
+
                 pm25Spots.add(
-                  FlSpot(
-                    i.toDouble(),
-                    clipValue(dayData[i]['avgPM25']?.toDouble() ?? 0, 0, 300),
-                  ),
+                  FlSpot(i.toDouble(), clipValue(pm25.toDouble(), 0, 300)),
                 );
                 pm10Spots.add(
-                  FlSpot(
-                    i.toDouble(),
-                    clipValue(dayData[i]['avgPM10']?.toDouble() ?? 0, 0, 300),
-                  ),
+                  FlSpot(i.toDouble(), clipValue(pm10.toDouble(), 0, 300)),
                 );
               }
 
@@ -249,7 +260,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                   leftTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      interval: 100,
+                                      interval: 50,
                                       reservedSize: 40,
                                       getTitlesWidget:
                                           (value, meta) => Text(
@@ -288,6 +299,61 @@ class _HistoryPageState extends State<HistoryPage> {
                                 maxX: (dayData.length - 1).toDouble(),
                                 minY: 0,
                                 maxY: 300,
+                                lineTouchData: LineTouchData(
+                                  touchTooltipData: LineTouchTooltipData(
+                                    getTooltipItems: (
+                                      List<LineBarSpot> touchedSpots,
+                                    ) {
+                                      return touchedSpots.map((spot) {
+                                        final int index = spot.x.toInt();
+                                        // Make sure index is in range
+                                        if (index < 0 ||
+                                            index >= dayData.length)
+                                          return null;
+
+                                        final dataPoint = dayData[index];
+                                        // Extract timestamp and format it
+                                        final rawTimestamp =
+                                            dataPoint['docCreated'];
+                                        String formattedTime = 'Unknown time';
+
+                                        if (rawTimestamp is Timestamp) {
+                                          formattedTime = DateFormat(
+                                            'HH:mm:ss',
+                                          ).format(rawTimestamp.toDate());
+                                        } else if (dataPoint['timestamp']
+                                            is Timestamp) {
+                                          formattedTime = DateFormat(
+                                            'HH:mm:ss',
+                                          ).format(
+                                            (dataPoint['timestamp']
+                                                    as Timestamp)
+                                                .toDate(),
+                                          );
+                                        }
+
+                                        // Get the PM value depending on which line (pm25 or pm10)
+                                        String label;
+                                        if (spot.bar.color == Colors.orange) {
+                                          label =
+                                              "PM2.5: ${spot.y.toStringAsFixed(1)} µg/m³";
+                                        } else {
+                                          label =
+                                              "PM10: ${spot.y.toStringAsFixed(1)} µg/m³";
+                                        }
+
+                                        return LineTooltipItem(
+                                          '$formattedTime\n$label',
+                                          const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        );
+                                      }).toList();
+                                    },
+                                  ),
+                                ),
+
                                 lineBarsData: [
                                   LineChartBarData(
                                     spots: pm25Spots,

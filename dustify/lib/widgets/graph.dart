@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:dustify/services/ble_manager.dart';
+import 'package:intl/intl.dart'; // <-- Import intl package
 
 class LineGraph extends StatefulWidget {
   final bool isPM2_5;
@@ -15,6 +16,7 @@ class LineGraph extends StatefulWidget {
 class _LineGraphState extends State<LineGraph> {
   final List<FlSpot> _pm25Spots = [];
   final List<FlSpot> _pm10Spots = [];
+  final List<DateTime> _timestamps = [];
   int _index = 0;
   StreamSubscription<Map<String, double>>? _dataSubscription;
 
@@ -29,14 +31,35 @@ class _LineGraphState extends State<LineGraph> {
 
     final pm25List = BLEManager().last60PM25;
     final pm10List = BLEManager().last60PM10;
+    final timestampList = BLEManager().last60Timestamps;
 
     setState(() {
+      _pm25Spots.clear();
+      _pm10Spots.clear();
+      _timestamps.clear();
+
       for (int i = 0; i < pm25List.length; i++) {
         _pm25Spots.add(FlSpot(i.toDouble(), pm25List[i]));
+        if (i < timestampList.length) {
+          _timestamps.add(timestampList[i]);
+        } else if (timestampList.isNotEmpty) {
+          // fallback: use last known timestamp + minutes offset
+          DateTime lastTimestamp = timestampList.last;
+          _timestamps.add(
+            lastTimestamp.add(Duration(minutes: i - timestampList.length + 1)),
+          );
+        } else {
+          // no timestamps at all, fallback to approximate now-based calculation
+          _timestamps.add(
+            DateTime.now().subtract(Duration(minutes: pm25List.length - i)),
+          );
+        }
       }
+
       for (int i = 0; i < pm10List.length; i++) {
         _pm10Spots.add(FlSpot(i.toDouble(), pm10List[i]));
       }
+
       _index = pm25List.length;
     });
 
@@ -44,12 +67,17 @@ class _LineGraphState extends State<LineGraph> {
       try {
         double pm25 = data['PM2.5'] ?? 0;
         double pm10 = data['PM10'] ?? 0;
+        final now = DateTime.now();
 
         setState(() {
           _pm25Spots.add(FlSpot(_index.toDouble(), pm25));
           _pm10Spots.add(FlSpot(_index.toDouble(), pm10));
+          _timestamps.add(now);
 
-          if (_pm25Spots.length > 60) _pm25Spots.removeAt(0);
+          if (_pm25Spots.length > 60) {
+            _pm25Spots.removeAt(0);
+            _timestamps.removeAt(0);
+          }
           if (_pm10Spots.length > 60) _pm10Spots.removeAt(0);
 
           for (int i = 0; i < _pm25Spots.length; i++) {
@@ -70,6 +98,13 @@ class _LineGraphState extends State<LineGraph> {
   void dispose() {
     _dataSubscription?.cancel();
     super.dispose();
+  }
+
+  String _formatTimestamp(double xValue) {
+    int index = xValue.round();
+    if (index < 0 || index >= _timestamps.length) return '';
+    final timestamp = _timestamps[index];
+    return DateFormat.Hms().format(timestamp); // Format: HH:mm:ss
   }
 
   @override
@@ -99,15 +134,41 @@ class _LineGraphState extends State<LineGraph> {
         ? LineChart(
           LineChartData(
             minY: 0,
-            maxY: 300,
+            maxY: _calculateMaxY(_pm25Spots),
             minX: 0,
             maxX: 60,
             gridData: FlGridData(show: true),
+            lineTouchData: LineTouchData(
+              enabled: true,
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots.map((spot) {
+                    final index = spot.x.round();
+                    String timeLabel = 'No Timestamp';
+
+                    if (index >= 0 && index < _timestamps.length) {
+                      final timestamp = _timestamps[index];
+                      timeLabel = DateFormat.Hms().format(timestamp);
+                    }
+
+                    return LineTooltipItem(
+                      'Time: $timeLabel\nValue: ${spot.y.toStringAsFixed(1)}',
+                      const TextStyle(color: Colors.white, fontSize: 12),
+                    );
+                  }).toList();
+                },
+              ),
+              touchCallback: (event, response) {
+                if (event is FlTapUpEvent) {
+                  setState(() {});
+                }
+              },
+            ),
             titlesData: FlTitlesData(
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  interval: 100,
+                  interval: 50,
                   reservedSize: 40,
                   getTitlesWidget:
                       (value, meta) => Text(
@@ -158,15 +219,41 @@ class _LineGraphState extends State<LineGraph> {
         : LineChart(
           LineChartData(
             minY: 0,
-            maxY: 300,
+            maxY: _calculateMaxY(_pm10Spots),
             minX: 0,
             maxX: 60,
             gridData: FlGridData(show: true),
+            lineTouchData: LineTouchData(
+              enabled: true,
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots.map((spot) {
+                    final index = spot.x.round();
+                    String timeLabel = 'No Timestamp';
+
+                    if (index >= 0 && index < _timestamps.length) {
+                      final timestamp = _timestamps[index];
+                      timeLabel = DateFormat.Hms().format(timestamp);
+                    }
+
+                    return LineTooltipItem(
+                      'Time: $timeLabel\nValue: ${spot.y.toStringAsFixed(1)}',
+                      const TextStyle(color: Colors.white, fontSize: 12),
+                    );
+                  }).toList();
+                },
+              ),
+              touchCallback: (event, response) {
+                if (event is FlTapUpEvent) {
+                  setState(() {});
+                }
+              },
+            ),
             titlesData: FlTitlesData(
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  interval: 100,
+                  interval: 50,
                   reservedSize: 40,
                   getTitlesWidget:
                       (value, meta) => Text(
@@ -214,5 +301,16 @@ class _LineGraphState extends State<LineGraph> {
             ],
           ),
         );
+  }
+
+  double _calculateMaxY(
+    List<FlSpot> spots, {
+    double cap = 1000,
+    double padding = 50,
+  }) {
+    if (spots.isEmpty) return cap;
+    double maxYValue = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+    double paddedMaxY = maxYValue + padding;
+    return paddedMaxY > cap ? cap : paddedMaxY;
   }
 }

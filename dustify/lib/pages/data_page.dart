@@ -1,4 +1,6 @@
+import 'package:dustify/services/firebase_manager.dart';
 import 'package:dustify/widgets/aqi_meter.dart';
+import 'package:syncfusion_flutter_gauges/gauges.dart';
 import 'package:dustify/widgets/graph.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +33,7 @@ class _DataPageState extends State<DataPage> {
       setState(() {
         deviceData = cached;
         isConnected = true;
+        FirebaseService().sendConnectionStatus(true);
       });
     }
 
@@ -40,6 +43,7 @@ class _DataPageState extends State<DataPage> {
         setState(() {
           deviceData = data;
           isConnected = true;
+          FirebaseService().sendConnectionStatus(true);
         });
       }
     });
@@ -195,54 +199,199 @@ class _DataPageState extends State<DataPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 10),
-                    Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            "PM10: ${deviceData!['PM10']} µg/m³",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
-                            ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: SfRadialGauge(
+                            axes: <RadialAxis>[
+                              RadialAxis(
+                                minimum: 0,
+                                maximum: 300,
+                                ranges: <GaugeRange>[
+                                  GaugeRange(
+                                    startValue: 0,
+                                    endValue: 50,
+                                    color: Colors.lightGreen,
+                                  ),
+                                  GaugeRange(
+                                    startValue: 50,
+                                    endValue: 100,
+                                    color: Colors.green,
+                                  ),
+                                  GaugeRange(
+                                    startValue: 100,
+                                    endValue: 150,
+                                    color: Colors.yellow,
+                                  ),
+                                  GaugeRange(
+                                    startValue: 150,
+                                    endValue: 200,
+                                    color: Colors.orange,
+                                  ),
+                                  GaugeRange(
+                                    startValue: 200,
+                                    endValue: 300,
+                                    color: Colors.red,
+                                  ),
+                                ],
+                                pointers: <GaugePointer>[
+                                  NeedlePointer(
+                                    value:
+                                        calculateISPU(
+                                          deviceData!['PM10'],
+                                          false,
+                                        ).toDouble(),
+                                    needleColor: Colors.white,
+                                    needleEndWidth: 3,
+                                    knobStyle: const KnobStyle(
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                                annotations: <GaugeAnnotation>[
+                                  GaugeAnnotation(
+                                    widget: Text(
+                                      'ISPU\n${calculateISPU(deviceData!['PM10'], false)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    angle: 90,
+                                    positionFactor: 0.75,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 5),
-                          Text(
-                            "${_getAQILevel(deviceData!['PM10'], false)}",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
+                        ),
+                        const SizedBox(width: 20),
+                        // PM10 & AQI info vertically stacked
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "PM10: ${deviceData!['PM10']} µg/m³",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(height: 5),
+                            Text(
+                              "${_getAQILevel(deviceData!['PM10'], false)}",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                     AQIMeter(value: deviceData!['PM10']!, isPM2_5: false),
                     const LineGraph(isPM2_5: false),
                     const SizedBox(height: 30),
-                    Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            "PM2.5 : ${deviceData!['PM2.5']} µg/m³",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
-                            ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: SfRadialGauge(
+                            axes: <RadialAxis>[
+                              RadialAxis(
+                                minimum: 0,
+                                maximum: 300,
+                                ranges: <GaugeRange>[
+                                  GaugeRange(
+                                    startValue: 0,
+                                    endValue: 50,
+                                    color: Colors.lightGreen,
+                                  ),
+                                  GaugeRange(
+                                    startValue: 50,
+                                    endValue: 100,
+                                    color: Colors.green,
+                                  ),
+                                  GaugeRange(
+                                    startValue: 100,
+                                    endValue: 150,
+                                    color: Colors.yellow,
+                                  ),
+                                  GaugeRange(
+                                    startValue: 150,
+                                    endValue: 200,
+                                    color: Colors.orange,
+                                  ),
+                                  GaugeRange(
+                                    startValue: 200,
+                                    endValue: 300,
+                                    color: Colors.red,
+                                  ),
+                                ],
+                                pointers: <GaugePointer>[
+                                  NeedlePointer(
+                                    value:
+                                        calculateISPU(
+                                          deviceData!['PM2.5'],
+                                          true,
+                                        ).toDouble(),
+                                    needleColor: Colors.white,
+                                    needleEndWidth: 3,
+                                    knobStyle: const KnobStyle(
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                                annotations: <GaugeAnnotation>[
+                                  GaugeAnnotation(
+                                    widget: Text(
+                                      'ISPU\n${calculateISPU(deviceData!['PM2.5'], true)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    angle: 90,
+                                    positionFactor: 0.75,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 5),
-                          Text(
-                            "${_getAQILevel(deviceData!['PM2.5'], true)}",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
+                        ),
+                        const SizedBox(width: 20),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "PM2.5: ${deviceData!['PM2.5']} µg/m³",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(height: 5),
+                            Text(
+                              "${_getAQILevel(deviceData!['PM2.5'], true)}",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                     AQIMeter(value: deviceData!['PM2.5']!, isPM2_5: true),
                     const LineGraph(isPM2_5: true),
@@ -251,10 +400,9 @@ class _DataPageState extends State<DataPage> {
                 : Column(
                   children: [
                     Text(
-                      isConnected ? "Connected" : "Disconnected",
+                      "Loading Data...",
                       style: TextStyle(
-                        color:
-                            isConnected ? Colors.greenAccent : Colors.redAccent,
+                        color: Colors.orange,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -297,6 +445,7 @@ class _DataPageState extends State<DataPage> {
           connectedDeviceId = null;
           deviceData = null;
           isConnected = false;
+          FirebaseService().sendConnectionStatus(false);
         });
       }
 
@@ -318,6 +467,7 @@ class _DataPageState extends State<DataPage> {
         setState(() {
           deviceData = null;
           isConnected = false;
+          FirebaseService().sendConnectionStatus(false);
         });
       }
 
@@ -327,5 +477,40 @@ class _DataPageState extends State<DataPage> {
     } catch (e) {
       debugPrint("Error during refresh: $e");
     }
+  }
+
+  int calculateISPU(double? x, bool isPM2_5) {
+    // Define breakpoints for PM10 and PM2.5 in arrays of tuples:
+    // Each tuple: [I_b, I_a, X_b, X_a]
+    List<List<double>> breakpoints =
+        isPM2_5
+            ? [
+              [0, 50, 0, 15.5],
+              [51, 100, 15.5, 55.4],
+              [101, 200, 55.4, 150.4],
+              [201, 300, 150.4, 250.4],
+              [301, 500, 250.4, 500],
+            ]
+            : [
+              [0, 50, 0, 50],
+              [51, 100, 50, 150],
+              [101, 200, 150, 350],
+              [201, 300, 350, 420],
+              [301, 500, 420, 500],
+            ];
+
+    for (var bp in breakpoints) {
+      double I_b = bp[0];
+      double I_a = bp[1];
+      double X_b = bp[2];
+      double X_a = bp[3];
+
+      if (x! >= X_b && x! <= X_a) {
+        // Apply formula
+        return (((I_a - I_b) / (X_a - X_b)) * (x - X_b) + I_b).round();
+      }
+    }
+    // If outside max range, cap to 500
+    return 500;
   }
 }

@@ -43,7 +43,7 @@ class _AQIMeterState extends State<AQIMeter> {
                     LinearGaugeRange(
                       startValue: 15.5,
                       endValue: 55.4,
-                      color: Colors.lightGreen,
+                      color: Colors.green,
                     ),
                     LinearGaugeRange(
                       startValue: 55.4,
@@ -84,7 +84,7 @@ class _AQIMeterState extends State<AQIMeter> {
                     LinearGaugeRange(
                       startValue: 50,
                       endValue: 150,
-                      color: Colors.lightGreen,
+                      color: Colors.green,
                     ),
                     LinearGaugeRange(
                       startValue: 150,

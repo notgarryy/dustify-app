@@ -73,7 +73,12 @@ Dustify is a portable ambient particulate analyzer designed to monitor air quali
 - Data page now shows connectivity status.
 - Updated Firestore data management.
 
-### TODO LIST:
-- User testing.
+### v0.2.0 - May 28, 2025
+- Now able to send notifications when readings are over threshold
+- Added notifications settings
+- Added ISPU meter information
+- Added ISPU index in data page
+- Added timestamps to graph, to give more information about the data's time
+- Bug fixes with graph
 
 [notgarryy]
