@@ -51,6 +51,7 @@ class MyApp extends StatelessWidget {
       title: 'Dustify',
       theme: ThemeData(useMaterial3: true),
       initialRoute: 'home',
+      debugShowCheckedModeBanner: false,
       routes: {
         'home': (context) => HomePage(),
         'data': (context) => DataPage(),

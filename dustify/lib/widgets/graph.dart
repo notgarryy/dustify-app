@@ -99,7 +99,7 @@ class _LineGraphState extends State<LineGraph> {
         ? LineChart(
           LineChartData(
             minY: 0,
-            maxY: 500,
+            maxY: 300,
             minX: 0,
             maxX: 60,
             gridData: FlGridData(show: true),
@@ -158,7 +158,7 @@ class _LineGraphState extends State<LineGraph> {
         : LineChart(
           LineChartData(
             minY: 0,
-            maxY: 500,
+            maxY: 300,
             minX: 0,
             maxX: 60,
             gridData: FlGridData(show: true),

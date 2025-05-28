@@ -30,8 +30,6 @@ class BLEManager {
   List<double> last60PM25 = [];
   List<double> last60PM10 = [];
 
-  DateTime? _lastDataTimestamp;
-  Timer? _dataMonitorTimer;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 3;
 
@@ -91,7 +89,6 @@ class BLEManager {
             ) {
               if (value.isNotEmpty) {
                 String data = utf8.decode(value);
-                _lastDataTimestamp = DateTime.now();
                 final now = DateTime.now();
                 final time =
                     "${now.hour.toString().padLeft(2, '0')}:"

@@ -12,12 +12,6 @@ class FirebaseService {
 
   Map? currentUser;
 
-  // Buffers to accumulate PM data
-  List<double> _pm25Buffer = [];
-  List<double> _pm10Buffer = [];
-  int _currentBatchIndex = 0;
-  String? _currentBatchDate; // format: 'ddMMMyyyy'
-
   FirebaseService();
 
   Future<void> initialize() async {

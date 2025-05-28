@@ -26,6 +26,12 @@ class _HistoryPageState extends State<HistoryPage> {
     hasUser = loggedInUser != null;
   }
 
+  double clipValue(double value, double min, double max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+  }
+
   @override
   Widget build(BuildContext context) {
     devHeight = MediaQuery.of(context).size.height;
@@ -44,7 +50,7 @@ class _HistoryPageState extends State<HistoryPage> {
     }
 
     return Scaffold(
-      backgroundColor: Color.fromRGBO(34, 31, 31, 1),
+      backgroundColor: const Color.fromRGBO(34, 31, 31, 1),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firebaseService!.getAllPmDataStream(),
         builder: (context, snapshot) {
@@ -74,6 +80,15 @@ class _HistoryPageState extends State<HistoryPage> {
             groupedData[dayKey]!.add(data);
           }
 
+          // Sort each day's data ascending by timestamp
+          for (var day in groupedData.keys) {
+            groupedData[day]!.sort((a, b) {
+              DateTime tA = (a['timestamp'] as Timestamp).toDate();
+              DateTime tB = (b['timestamp'] as Timestamp).toDate();
+              return tA.compareTo(tB);
+            });
+          }
+
           // Sort days descending (newest first)
           final sortedDays =
               groupedData.keys.toList()..sort((a, b) => b.compareTo(a));
@@ -88,8 +103,8 @@ class _HistoryPageState extends State<HistoryPage> {
               double totalPm10 = 0;
 
               for (var data in dayData) {
-                totalPm25 += (data['pm25'] ?? 0).toDouble();
-                totalPm10 += (data['pm10'] ?? 0).toDouble();
+                totalPm25 += (data['avgPM25'] ?? 0).toDouble();
+                totalPm10 += (data['avgPM10'] ?? 0).toDouble();
               }
 
               double avgPm25 = totalPm25 / dayData.length;
@@ -98,12 +113,19 @@ class _HistoryPageState extends State<HistoryPage> {
               List<FlSpot> pm25Spots = [];
               List<FlSpot> pm10Spots = [];
 
+              // Clip nilai sebelum dimasukkan ke FlSpot supaya tidak overshoot
               for (int i = 0; i < dayData.length; i++) {
                 pm25Spots.add(
-                  FlSpot(i.toDouble(), dayData[i]['pm25']?.toDouble() ?? 0),
+                  FlSpot(
+                    i.toDouble(),
+                    clipValue(dayData[i]['avgPM25']?.toDouble() ?? 0, 0, 300),
+                  ),
                 );
                 pm10Spots.add(
-                  FlSpot(i.toDouble(), dayData[i]['pm10']?.toDouble() ?? 0),
+                  FlSpot(
+                    i.toDouble(),
+                    clipValue(dayData[i]['avgPM10']?.toDouble() ?? 0, 0, 300),
+                  ),
                 );
               }
 
@@ -155,19 +177,17 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                       expandedAlignment: Alignment.centerLeft,
                       expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                      childrenPadding: EdgeInsets.all(10),
-
+                      childrenPadding: const EdgeInsets.all(10),
                       children: [
                         Container(
-                          margin: EdgeInsets.only(left: 20),
-                          child: Text(
+                          margin: const EdgeInsets.only(left: 20),
+                          child: const Text(
                             "Daily Data: ",
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
-                        // Adding the legend here
                         Container(
-                          padding: EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                             vertical: 10,
                             horizontal: 20,
                           ),
@@ -181,8 +201,8 @@ class _HistoryPageState extends State<HistoryPage> {
                                     height: 20,
                                     color: Colors.orange,
                                   ),
-                                  SizedBox(width: 5),
-                                  Text(
+                                  const SizedBox(width: 5),
+                                  const Text(
                                     'PM2.5',
                                     style: TextStyle(color: Colors.white),
                                   ),
@@ -195,8 +215,8 @@ class _HistoryPageState extends State<HistoryPage> {
                                     height: 20,
                                     color: Colors.lightBlueAccent,
                                   ),
-                                  SizedBox(width: 5),
-                                  Text(
+                                  const SizedBox(width: 5),
+                                  const Text(
                                     'PM10',
                                     style: TextStyle(color: Colors.white),
                                   ),
@@ -211,20 +231,19 @@ class _HistoryPageState extends State<HistoryPage> {
                             width: devWidth! * 0.85,
                             child: LineChart(
                               LineChartData(
+                                clipData: FlClipData.all(), // <-- tambahkan ini
                                 gridData: FlGridData(
                                   show: true,
-                                  getDrawingHorizontalLine: (value) {
-                                    return FlLine(
-                                      color: Colors.white,
-                                      strokeWidth: 1,
-                                    );
-                                  },
-                                  getDrawingVerticalLine: (value) {
-                                    return FlLine(
-                                      color: Colors.white,
-                                      strokeWidth: 1,
-                                    );
-                                  },
+                                  getDrawingHorizontalLine:
+                                      (value) => FlLine(
+                                        color: Colors.white,
+                                        strokeWidth: 1,
+                                      ),
+                                  getDrawingVerticalLine:
+                                      (value) => FlLine(
+                                        color: Colors.white,
+                                        strokeWidth: 1,
+                                      ),
                                 ),
                                 titlesData: FlTitlesData(
                                   leftTitles: AxisTitles(
@@ -245,10 +264,8 @@ class _HistoryPageState extends State<HistoryPage> {
                                   bottomTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      interval:
-                                          1, // Set interval to 1 to show every label
-                                      reservedSize:
-                                          32, // Increase reserved size to prevent overlap
+                                      interval: 1,
+                                      reservedSize: 32,
                                       getTitlesWidget:
                                           (value, meta) => Text(
                                             value.toInt().toString(),
@@ -270,12 +287,12 @@ class _HistoryPageState extends State<HistoryPage> {
                                 minX: 0,
                                 maxX: (dayData.length - 1).toDouble(),
                                 minY: 0,
-                                maxY: 500,
+                                maxY: 300,
                                 lineBarsData: [
                                   LineChartBarData(
                                     spots: pm25Spots,
                                     isCurved: true,
-                                    curveSmoothness: 0.3,
+                                    curveSmoothness: 0.15,
                                     preventCurveOverShooting: true,
                                     color: Colors.orange,
                                     barWidth: 3,
@@ -286,7 +303,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                   LineChartBarData(
                                     spots: pm10Spots,
                                     isCurved: true,
-                                    curveSmoothness: 0.3,
+                                    curveSmoothness: 0.15,
                                     preventCurveOverShooting: true,
                                     color: Colors.lightBlueAccent,
                                     barWidth: 3,

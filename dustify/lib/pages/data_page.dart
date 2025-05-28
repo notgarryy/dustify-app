@@ -22,15 +22,10 @@ class _DataPageState extends State<DataPage> {
   @override
   void initState() {
     super.initState();
-    // Start auto reconnect scanning when this page is active
     BLEManager().startAutoReconnectScan();
-
     _loadConnectedDevice();
-
-    // Try to reconnect from saved preferences
     BLEManager().tryReconnectFromPreferences();
 
-    // Load cached last known data if any
     final cached = BLEManager().lastKnownData;
     if (cached != null) {
       setState(() {
@@ -39,7 +34,6 @@ class _DataPageState extends State<DataPage> {
       });
     }
 
-    // Listen for incoming parsed data
     _dataSubscription = BLEManager().parsedDataStream.listen((data) {
       if (mounted) {
         debugPrint("New parsed data received: $data");
@@ -53,10 +47,7 @@ class _DataPageState extends State<DataPage> {
 
   @override
   void dispose() {
-    // Stop auto reconnect scanning when this page is disposed
     BLEManager().stopAutoReconnectScan();
-
-    // Cancel the data subscription
     _dataSubscription?.cancel();
     super.dispose();
   }
@@ -331,7 +322,6 @@ class _DataPageState extends State<DataPage> {
       }
 
       await Future.delayed(const Duration(seconds: 2));
-
       await BLEManager().tryReconnectFromPreferences();
       debugPrint("Reconnection triggered.");
     } catch (e) {
