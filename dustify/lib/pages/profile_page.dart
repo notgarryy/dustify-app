@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:dustify/services/firebase_manager.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:typed_data';
+import 'package:dustify/services/ble_manager.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -386,10 +388,11 @@ class _ProfilePageState extends State<ProfilePage> {
             value: _doNotDisturb,
             onChanged: (value) {
               setState(() => _doNotDisturb = value);
-              _setNotificationPreference(doNotDisturb: value);
+              final dataToSend = value ? [1] : [0];
+              BLEManager().sendDataToDevice(Uint8List.fromList(dataToSend));
             },
             title: const Text(
-              'Do not disturb',
+              'Silent device alarm',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -485,7 +488,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Text(
-        "Dustify v0.2.0",
+        "Dustify v0.2.1",
         style: TextStyle(
           color: Colors.grey,
           fontSize: 14,

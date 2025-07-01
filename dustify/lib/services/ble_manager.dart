@@ -5,6 +5,7 @@ import 'package:dustify/services/notifications_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:typed_data';
 
 class BLEManager {
   static final BLEManager _instance = BLEManager._internal();
@@ -13,6 +14,7 @@ class BLEManager {
 
   BluetoothDevice? connectedDevice;
   BluetoothCharacteristic? notifyCharacteristic;
+  BluetoothCharacteristic? writeCharacteristic;
 
   final StreamController<int> _dataController =
       StreamController<int>.broadcast();
@@ -77,6 +79,10 @@ class BLEManager {
       final services = await device.discoverServices();
       for (var service in services) {
         for (var characteristic in service.characteristics) {
+          debugPrint('Characteristic ${characteristic.uuid}');
+          debugPrint(' - canWrite: ${characteristic.properties.write}');
+          debugPrint(' - canNotify: ${characteristic.properties.notify}');
+          debugPrint(' - canRead: ${characteristic.properties.read}');
           if (characteristic.properties.notify) {
             notifyCharacteristic = characteristic;
 
@@ -103,7 +109,11 @@ class BLEManager {
                 _parseSensorData(data);
               }
             });
-            break;
+          }
+
+          if (characteristic.properties.write ||
+              characteristic.properties.writeWithoutResponse) {
+            writeCharacteristic = characteristic;
           }
         }
       }
@@ -117,6 +127,8 @@ class BLEManager {
           _connectionStatusController.add(false);
         }
       });
+
+      await device.discoverServices();
     } catch (e) {
       debugPrint("Connection failed: $e");
       connectedDevice = null;
@@ -322,5 +334,18 @@ class BLEManager {
     final prefs = await SharedPreferences.getInstance();
     final now = DateTime.now();
     await prefs.setInt('lastNotificationTime', now.millisecondsSinceEpoch);
+  }
+
+  Future<void> sendDataToDevice(Uint8List data) async {
+    if (writeCharacteristic != null) {
+      try {
+        await writeCharacteristic!.write(data, withoutResponse: false);
+        debugPrint("✅ Sent data: $data");
+      } catch (e) {
+        debugPrint("❌ Failed to send data: $e");
+      }
+    } else {
+      debugPrint("⚠️ No writable characteristic available.");
+    }
   }
 }

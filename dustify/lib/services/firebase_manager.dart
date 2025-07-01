@@ -132,6 +132,8 @@ class FirebaseService {
       return;
     }
 
+    DateTime sent = DateTime.now();
+
     try {
       String uid = user.uid;
       CollectionReference userDataCollection = _db
@@ -175,7 +177,9 @@ class FirebaseService {
             "avgPM25": pm25,
             "avgPM10": pm10,
             "docCreated": initialTime,
-            "timestamp": Timestamp.fromDate(now),
+            // "timestamp": Timestamp.fromDate(now),
+            "sent": Timestamp.fromDate(sent),
+            "received": FieldValue.serverTimestamp(),
             "entryCount": 1,
             "isLive": false,
           });
@@ -208,7 +212,9 @@ class FirebaseService {
             "avgPM10": newAvgPm10,
             "entryCount": newEntryCount,
             "docCreated": docCreated,
-            "timestamp": Timestamp.fromDate(now),
+            // "timestamp": Timestamp.fromDate(now),
+            "sent": Timestamp.fromDate(sent),
+            "received": FieldValue.serverTimestamp(),
             "isLive": false,
           });
 
